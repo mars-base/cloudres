@@ -54,7 +54,9 @@ func (m *appModel) viewProviderSelect() string {
 				strings.Join(entry.regions, ", "),
 			}
 		}
-		body = m.renderTable(columns, rows)
+		used := len(toLines(header)) + len(toLines(logo)) + len(toLines(footer))
+		available := max(0, m.height-used)
+		body = m.renderTable(columns, rows, available)
 	}
 
 	return m.fitToHeight(header, logo, body, footer)
@@ -231,7 +233,7 @@ func (m *appModel) renderLowerPanel(availableHeight int) string {
 	for i, r := range m.resources {
 		rows[i] = r.Row()
 	}
-	return m.renderTable(columns, rows)
+	return m.renderTable(columns, rows, availableHeight)
 }
 
 // ── Detail (overlays the lower panel, upper panel stays visible) ───
@@ -352,9 +354,14 @@ func (m *appModel) viewFooter() string {
 	return renderHints(hints)
 }
 
-// ── Shared Table Renderer (no padding — fitToHeight handles layout) ──
+// ── Shared Table Renderer (auto-scrolls to keep the cursor visible) ──
 
-func (m *appModel) renderTable(columns []string, rows [][]string) string {
+// renderTable renders columns/rows as a table, showing only as many rows as
+// fit within availableHeight and automatically scrolling m.offset so the
+// selected row (m.cursor) is always visible — instead of relying on
+// fitToHeight's tail truncation, which used to cut off the cursor entirely
+// once it scrolled past the first screenful of rows.
+func (m *appModel) renderTable(columns []string, rows [][]string, availableHeight int) string {
 	widths := make([]int, len(columns))
 	for i, c := range columns {
 		widths[i] = len(c)
@@ -395,9 +402,32 @@ func (m *appModel) renderTable(columns []string, rows [][]string) string {
 	sb.WriteString(sepStyle.Render(strings.Repeat("─", totalW)))
 	sb.WriteByte('\n')
 
-	// Scroll: show all rows for now, scrolling handled by fitToHeight truncation
-	m.offset = max(0, min(m.offset, m.cursor))
-	end := len(rows)
+	// Reserve a line for the "N items" / "X-Y of N" footer below the table.
+	hasInfoLine := len(rows) > 0
+	headerLines := 2
+	infoLines := 0
+	if hasInfoLine {
+		infoLines = 1
+	}
+	visibleRows := max(1, availableHeight-headerLines-infoLines)
+
+	// Clamp cursor into range, then auto-scroll offset to keep it visible.
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	if len(rows) > 0 && m.cursor >= len(rows) {
+		m.cursor = len(rows) - 1
+	}
+	if m.cursor < m.offset {
+		m.offset = m.cursor
+	}
+	if m.cursor >= m.offset+visibleRows {
+		m.offset = m.cursor - visibleRows + 1
+	}
+	maxOffset := max(0, len(rows)-visibleRows)
+	m.offset = max(0, min(m.offset, maxOffset))
+
+	end := min(len(rows), m.offset+visibleRows)
 
 	for i := m.offset; i < end; i++ {
 		row := rows[i]
@@ -444,9 +474,14 @@ func (m *appModel) renderTable(columns []string, rows [][]string) string {
 		sb.WriteByte('\n')
 	}
 
-	// Bottom info
-	if len(rows) > 0 {
-		sb.WriteString(dimStyle.Render(fmt.Sprintf("  %d items", len(rows))))
+	// Bottom info: show the visible slice's range once scrolled, so the
+	// user can tell there's more above/below without counting rows.
+	if hasInfoLine {
+		if len(rows) > visibleRows {
+			sb.WriteString(dimStyle.Render(fmt.Sprintf("  %d-%d of %d items", m.offset+1, end, len(rows))))
+		} else {
+			sb.WriteString(dimStyle.Render(fmt.Sprintf("  %d items", len(rows))))
+		}
 		sb.WriteByte('\n')
 	}
 
