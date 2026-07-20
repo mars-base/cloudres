@@ -38,6 +38,8 @@ func Columns(resourceType string) []string {
 		return []string{"ID", "Name", "Status", "Type", "IP"}
 	case "vpc":
 		return []string{"ID", "Name", "CIDR", "Status"}
+	case "vsw":
+		return []string{"ID", "Name", "CIDR", "Zone", "Status"}
 	case "rds":
 		return []string{"ID", "Name", "Status", "Engine"}
 	case "oss":
@@ -54,6 +56,8 @@ func (r Resource) Detail() [][2]string {
 		return r.ecsDetail()
 	case "vpc":
 		return r.vpcDetail()
+	case "vsw":
+		return r.vswDetail()
 	case "rds":
 		return r.rdsDetail()
 	case "oss":
@@ -75,6 +79,8 @@ func (r Resource) Row() []string {
 		return r.ecsRow()
 	case "vpc":
 		return r.vpcRow()
+	case "vsw":
+		return r.vswRow()
 	case "rds":
 		return r.rdsRow()
 	case "oss":

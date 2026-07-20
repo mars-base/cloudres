@@ -29,6 +29,15 @@ func (r Resource) vpcRow() []string {
 	return []string{r.ResourceID, r.ResourceName, d.CidrBlock, r.Status}
 }
 
+func (r Resource) vswRow() []string {
+	var d struct {
+		CidrBlock string `json:"CidrBlock"`
+		ZoneId    string `json:"ZoneId"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{r.ResourceID, r.ResourceName, d.CidrBlock, d.ZoneId, r.Status}
+}
+
 func (r Resource) rdsRow() []string {
 	var d struct {
 		Engine string `json:"Engine"`
@@ -107,6 +116,26 @@ func (r Resource) vpcDetail() [][2]string {
 		{"Region", r.Region},
 		{"CIDR", d.CidrBlock},
 		{"IPv6 CIDR", d.Ipv6CidrBlock},
+		{"Created", d.CreationTime},
+	}
+}
+
+func (r Resource) vswDetail() [][2]string {
+	var d struct {
+		CidrBlock    string `json:"CidrBlock"`
+		ZoneId       string `json:"ZoneId"`
+		VpcId        string `json:"VpcId"`
+		CreationTime string `json:"CreationTime"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", r.Region},
+		{"Zone", d.ZoneId},
+		{"CIDR", d.CidrBlock},
+		{"VPC", d.VpcId},
 		{"Created", d.CreationTime},
 	}
 }
