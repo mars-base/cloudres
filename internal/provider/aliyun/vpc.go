@@ -39,6 +39,7 @@ type vpcResponse struct {
 	Vpcs struct {
 		VPC []vpcInstance `json:"Vpc"`
 	} `json:"Vpcs"`
+	TotalCount int `json:"TotalCount"`
 }
 
 type vpcInstance struct {
@@ -50,36 +51,52 @@ type vpcInstance struct {
 	CreationTime string `json:"CreationTime"`
 }
 
+// vpcPageSize is the page size requested per DescribeVpcs call. The aliyun
+// API defaults to 10 per page, so without paging accounts with more than
+// 10 VPCs in a region would silently lose results.
+const vpcPageSize = 50
+
 func fetchVPCRegion(ctx context.Context, p *core.Provider, region string) ([]core.Resource, error) {
-	args := []string{"vpc", "DescribeVpcs"}
-	if region != "" {
-		args = append(args, "--RegionId", region)
-	}
-
-	out, err := runAliyun(ctx, args, p.ActiveProfile)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp vpcResponse
-	if err := json.Unmarshal(out, &resp); err != nil {
-		return nil, fmt.Errorf("parse vpc response: %w", err)
-	}
-
+	var allResources []core.Resource
 	now := time.Now()
-	resources := make([]core.Resource, 0, len(resp.Vpcs.VPC))
-	for _, v := range resp.Vpcs.VPC {
-		rawJSON, _ := json.Marshal(v)
-		resources = append(resources, core.Resource{
-			Provider:     "aliyun",
-			ResourceType: "vpc",
-			Region:       v.RegionID,
-			ResourceID:   v.VpcID,
-			ResourceName: v.VpcName,
-			Status:       v.Status,
-			RawJSON:      string(rawJSON),
-			SyncedAt:     now,
-		})
+
+	for pageNumber := 1; ; pageNumber++ {
+		args := []string{"vpc", "DescribeVpcs",
+			"--PageSize", fmt.Sprintf("%d", vpcPageSize),
+			"--PageNumber", fmt.Sprintf("%d", pageNumber),
+		}
+		if region != "" {
+			args = append(args, "--RegionId", region)
+		}
+
+		out, err := runAliyun(ctx, args, p.ActiveProfile)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp vpcResponse
+		if err := json.Unmarshal(out, &resp); err != nil {
+			return nil, fmt.Errorf("parse vpc response: %w", err)
+		}
+
+		for _, v := range resp.Vpcs.VPC {
+			rawJSON, _ := json.Marshal(v)
+			allResources = append(allResources, core.Resource{
+				Provider:     "aliyun",
+				ResourceType: "vpc",
+				Region:       v.RegionID,
+				ResourceID:   v.VpcID,
+				ResourceName: v.VpcName,
+				Status:       v.Status,
+				RawJSON:      string(rawJSON),
+				SyncedAt:     now,
+			})
+		}
+
+		if len(allResources) >= resp.TotalCount || len(resp.Vpcs.VPC) < vpcPageSize {
+			break
+		}
 	}
-	return resources, nil
+
+	return allResources, nil
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/mars-base/cloudres/internal/core"
@@ -63,7 +64,11 @@ func parseOSSOutput(output string) ([]core.Resource, error) {
 	resources := make([]core.Resource, 0, len(matches))
 	for _, m := range matches {
 		bucket := m[4]
-		region := m[2]
+		// ossutil reports the region as "oss-cn-hangzhou"; strip the "oss-"
+		// prefix so it matches the plain region IDs (e.g. "cn-hangzhou")
+		// used everywhere else (profile config, TUI region selection, cache
+		// lookups), otherwise the TUI's region filter matches nothing.
+		region := strings.TrimPrefix(m[2], "oss-")
 		storageClass := m[3]
 		created := m[1]
 

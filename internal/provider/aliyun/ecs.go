@@ -42,6 +42,8 @@ type ecsResponse struct {
 		Instance []ecsInstance `json:"Instance"`
 	} `json:"Instances"`
 	TotalCount int `json:"TotalCount"`
+	PageSize   int `json:"PageSize"`
+	PageNumber int `json:"PageNumber"`
 }
 
 type ecsInstance struct {
@@ -71,38 +73,57 @@ type ecsInstance struct {
 	} `json:"VpcAttributes"`
 }
 
+// ecsPageSize is the page size requested per DescribeInstances call.
+// The aliyun API defaults to 10 per page, so without paging most accounts
+// with more than 10 instances would silently lose results.
+const ecsPageSize = 100
+
 func fetchECSRegion(ctx context.Context, p *core.Provider, region string) ([]core.Resource, error) {
-	args := []string{"ecs", "DescribeInstances"}
-	if region != "" {
-		args = append(args, "--RegionId", region)
-	}
-
-	out, err := runAliyun(ctx, args, p.ActiveProfile)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp ecsResponse
-	if err := json.Unmarshal(out, &resp); err != nil {
-		return nil, fmt.Errorf("parse ecs response: %w", err)
-	}
-
+	var allResources []core.Resource
 	now := time.Now()
-	resources := make([]core.Resource, 0, len(resp.Instances.Instance))
-	for _, inst := range resp.Instances.Instance {
-		rawJSON, _ := json.Marshal(inst)
-		resources = append(resources, core.Resource{
-			Provider:     "aliyun",
-			ResourceType: "ecs",
-			Region:       inst.RegionID,
-			ResourceID:   inst.InstanceID,
-			ResourceName: inst.InstanceName,
-			Status:       inst.Status,
-			RawJSON:      string(rawJSON),
-			SyncedAt:     now,
-		})
+
+	for pageNumber := 1; ; pageNumber++ {
+		args := []string{"ecs", "DescribeInstances",
+			"--PageSize", fmt.Sprintf("%d", ecsPageSize),
+			"--PageNumber", fmt.Sprintf("%d", pageNumber),
+		}
+		if region != "" {
+			args = append(args, "--RegionId", region)
+		}
+
+		out, err := runAliyun(ctx, args, p.ActiveProfile)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp ecsResponse
+		if err := json.Unmarshal(out, &resp); err != nil {
+			return nil, fmt.Errorf("parse ecs response: %w", err)
+		}
+
+		for _, inst := range resp.Instances.Instance {
+			rawJSON, _ := json.Marshal(inst)
+			allResources = append(allResources, core.Resource{
+				Provider:     "aliyun",
+				ResourceType: "ecs",
+				Region:       inst.RegionID,
+				ResourceID:   inst.InstanceID,
+				ResourceName: inst.InstanceName,
+				Status:       inst.Status,
+				RawJSON:      string(rawJSON),
+				SyncedAt:     now,
+			})
+		}
+
+		// Stop once we've fetched all pages, or the API returned less than
+		// a full page (defensive: avoids an infinite loop if TotalCount is
+		// ever inconsistent with the actual instance count).
+		if len(allResources) >= resp.TotalCount || len(resp.Instances.Instance) < ecsPageSize {
+			break
+		}
 	}
-	return resources, nil
+
+	return allResources, nil
 }
 
 // runAliyun executes the aliyun CLI and returns stdout bytes.

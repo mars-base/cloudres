@@ -39,6 +39,7 @@ type rdsResponse struct {
 	Items struct {
 		DBInstance []rdsInstance `json:"DBInstance"`
 	} `json:"Items"`
+	TotalRecordCount int `json:"TotalRecordCount"`
 }
 
 type rdsInstance struct {
@@ -53,36 +54,52 @@ type rdsInstance struct {
 	CreationTime          string `json:"CreateTime"`
 }
 
+// rdsPageSize is the page size requested per DescribeDBInstances call.
+// Without paging, accounts with more instances than the API's default
+// page size would silently lose results.
+const rdsPageSize = 100
+
 func fetchRDSRegion(ctx context.Context, p *core.Provider, region string) ([]core.Resource, error) {
-	args := []string{"rds", "DescribeDBInstances"}
-	if region != "" {
-		args = append(args, "--RegionId", region)
-	}
-
-	out, err := runAliyun(ctx, args, p.ActiveProfile)
-	if err != nil {
-		return nil, err
-	}
-
-	var resp rdsResponse
-	if err := json.Unmarshal(out, &resp); err != nil {
-		return nil, fmt.Errorf("parse rds response: %w", err)
-	}
-
+	var allResources []core.Resource
 	now := time.Now()
-	resources := make([]core.Resource, 0, len(resp.Items.DBInstance))
-	for _, inst := range resp.Items.DBInstance {
-		rawJSON, _ := json.Marshal(inst)
-		resources = append(resources, core.Resource{
-			Provider:     "aliyun",
-			ResourceType: "rds",
-			Region:       inst.RegionID,
-			ResourceID:   inst.DBInstanceID,
-			ResourceName: inst.DBInstanceDescription,
-			Status:       inst.DBInstanceStatus,
-			RawJSON:      string(rawJSON),
-			SyncedAt:     now,
-		})
+
+	for pageNumber := 1; ; pageNumber++ {
+		args := []string{"rds", "DescribeDBInstances",
+			"--PageSize", fmt.Sprintf("%d", rdsPageSize),
+			"--PageNumber", fmt.Sprintf("%d", pageNumber),
+		}
+		if region != "" {
+			args = append(args, "--RegionId", region)
+		}
+
+		out, err := runAliyun(ctx, args, p.ActiveProfile)
+		if err != nil {
+			return nil, err
+		}
+
+		var resp rdsResponse
+		if err := json.Unmarshal(out, &resp); err != nil {
+			return nil, fmt.Errorf("parse rds response: %w", err)
+		}
+
+		for _, inst := range resp.Items.DBInstance {
+			rawJSON, _ := json.Marshal(inst)
+			allResources = append(allResources, core.Resource{
+				Provider:     "aliyun",
+				ResourceType: "rds",
+				Region:       inst.RegionID,
+				ResourceID:   inst.DBInstanceID,
+				ResourceName: inst.DBInstanceDescription,
+				Status:       inst.DBInstanceStatus,
+				RawJSON:      string(rawJSON),
+				SyncedAt:     now,
+			})
+		}
+
+		if len(allResources) >= resp.TotalRecordCount || len(resp.Items.DBInstance) < rdsPageSize {
+			break
+		}
 	}
-	return resources, nil
+
+	return allResources, nil
 }
