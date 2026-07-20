@@ -253,21 +253,26 @@ func (r Resource) ossDetail() [][2]string {
 
 func (r Resource) tairDetail() [][2]string {
 	var d struct {
-		InstanceType  string `json:"InstanceType"`
-		EditionType   string `json:"EditionType"`
-		EngineVersion string `json:"EngineVersion"`
-		InstanceClass string `json:"InstanceClass"`
-		ZoneId        string `json:"ZoneId"`
-		VpcId         string `json:"VpcId"`
-		VSwitchId     string `json:"VSwitchId"`
-		ChargeType    string `json:"ChargeType"`
-		CreateTime    string `json:"CreateTime"`
-		EndTime       string `json:"EndTime"`
-		UsedMemory    int64  `json:"UsedMemory"`
-		QuotaMemory   int64  `json:"QuotaMemory"`
+		InstanceType      string `json:"InstanceType"`
+		EditionType       string `json:"EditionType"`
+		EngineVersion     string `json:"EngineVersion"`
+		InstanceClass     string `json:"InstanceClass"`
+		ShardCount        int    `json:"ShardCount"`
+		RealInstanceClass string `json:"RealInstanceClass"`
+		Bandwidth         int    `json:"Bandwidth"`
+		Connections       int64  `json:"Connections"`
+		QPS               int64  `json:"QPS"`
+		ZoneId            string `json:"ZoneId"`
+		VpcId             string `json:"VpcId"`
+		VSwitchId         string `json:"VSwitchId"`
+		ChargeType        string `json:"ChargeType"`
+		CreateTime        string `json:"CreateTime"`
+		EndTime           string `json:"EndTime"`
+		UsedMemory        int64  `json:"UsedMemory"`
+		QuotaMemory       int64  `json:"QuotaMemory"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
-	return [][2]string{
+	pairs := [][2]string{
 		{"ID", r.ResourceID},
 		{"Name", r.ResourceName},
 		{"Status", r.Status},
@@ -277,6 +282,23 @@ func (r Resource) tairDetail() [][2]string {
 		{"Edition", d.EditionType},
 		{"Version", d.EngineVersion},
 		{"Class", d.InstanceClass},
+	}
+	if d.RealInstanceClass != "" {
+		pairs = append(pairs, [2]string{"RealClass", d.RealInstanceClass})
+	}
+	if d.ShardCount > 0 {
+		pairs = append(pairs, [2]string{"Shards", itoa(d.ShardCount)})
+	}
+	if d.Bandwidth > 0 {
+		pairs = append(pairs, [2]string{"Bandwidth", fmt.Sprintf("%d MB/s", d.Bandwidth)})
+	}
+	if d.Connections > 0 {
+		pairs = append(pairs, [2]string{"MaxConnections", fmt.Sprintf("%d", d.Connections)})
+	}
+	if d.QPS > 0 {
+		pairs = append(pairs, [2]string{"QPS", fmt.Sprintf("%d", d.QPS)})
+	}
+	pairs = append(pairs, [][2]string{
 		{"MemoryUsed", formatBytes(d.UsedMemory)},
 		{"MemoryQuota", formatBytes(d.QuotaMemory)},
 		{"MemoryUsage", formatPercent(d.UsedMemory, d.QuotaMemory)},
@@ -285,7 +307,8 @@ func (r Resource) tairDetail() [][2]string {
 		{"VSwitch", d.VSwitchId},
 		{"Created", d.CreateTime},
 		{"Expires", d.EndTime},
-	}
+	}...)
+	return pairs
 }
 
 func (r Resource) polarDBDetail() [][2]string {

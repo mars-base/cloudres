@@ -10,6 +10,17 @@ import (
 	"github.com/mars-base/cloudres/internal/core"
 )
 
+// tairAttr holds per-instance specs from DescribeInstanceAttribute.
+// These fields (shard count, real class, bandwidth, etc.) aren't
+// included in the list response and require a per-instance call.
+type tairAttr struct {
+	ShardCount        int    `json:"ShardCount"`
+	RealInstanceClass string `json:"RealInstanceClass"`
+	Bandwidth         int    `json:"Bandwidth"`
+	Connections       int64  `json:"Connections"`
+	QPS               int64  `json:"QPS"`
+}
+
 // TairFetcher fetches Tair (Redis-compatible) instances via the r-kvstore API.
 type TairFetcher struct{}
 
@@ -100,19 +111,32 @@ func fetchTairRegion(ctx context.Context, p *core.Provider, region string) ([]co
 		for _, inst := range resp.Instances.KVStoreInstance {
 			usage, err := fetchTairMemoryUsage(ctx, p, inst.InstanceID)
 			if err != nil {
-				// Usage is best-effort monitoring data: don't fail the whole
-				// sync over a single instance's monitor lookup.
 				usage = &tairMemoryUsage{}
+			}
+
+			attr, err := fetchTairAttribute(ctx, p, inst.InstanceID)
+			if err != nil {
+				attr = &tairAttr{}
 			}
 
 			rawJSON, _ := json.Marshal(struct {
 				tairInstance
-				UsedMemory  int64 `json:"UsedMemory"`
-				QuotaMemory int64 `json:"QuotaMemory"`
+				UsedMemory        int64  `json:"UsedMemory"`
+				QuotaMemory       int64  `json:"QuotaMemory"`
+				ShardCount        int    `json:"ShardCount"`
+				RealInstanceClass string `json:"RealInstanceClass"`
+				Bandwidth         int    `json:"Bandwidth"`
+				Connections       int64  `json:"Connections"`
+				QPS               int64  `json:"QPS"`
 			}{
-				tairInstance: inst,
-				UsedMemory:   usage.UsedMemory,
-				QuotaMemory:  usage.QuotaMemory,
+				tairInstance:      inst,
+				UsedMemory:        usage.UsedMemory,
+				QuotaMemory:       usage.QuotaMemory,
+				ShardCount:        attr.ShardCount,
+				RealInstanceClass: attr.RealInstanceClass,
+				Bandwidth:         attr.Bandwidth,
+				Connections:       attr.Connections,
+				QPS:               attr.QPS,
 			})
 			allResources = append(allResources, core.Resource{
 				Provider:     "aliyun",
@@ -187,4 +211,28 @@ func fetchTairMemoryUsage(ctx context.Context, p *core.Provider, instanceID stri
 	used, _ := strconv.ParseFloat(sample.UsedMemory, 64)
 	quota, _ := strconv.ParseFloat(sample.QuotaMemory, 64)
 	return &tairMemoryUsage{UsedMemory: int64(used), QuotaMemory: int64(quota)}, nil
+}
+
+// fetchTairAttribute calls DescribeInstanceAttribute for a single instance
+// to extract shard count, real instance class, bandwidth, etc. Like other
+// per-instance enrichment calls, this is best-effort.
+func fetchTairAttribute(ctx context.Context, p *core.Provider, instanceID string) (*tairAttr, error) {
+	out, err := runAliyun(ctx, []string{"r-kvstore", "DescribeInstanceAttribute", "--InstanceId", instanceID}, p.ActiveProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp struct {
+		Instances struct {
+			DBInstanceAttribute []tairAttr `json:"DBInstanceAttribute"`
+		} `json:"Instances"`
+	}
+	if err := json.Unmarshal(out, &resp); err != nil {
+		return nil, fmt.Errorf("parse tair attribute response: %w", err)
+	}
+	if len(resp.Instances.DBInstanceAttribute) == 0 {
+		return &tairAttr{}, nil
+	}
+	attr := resp.Instances.DBInstanceAttribute[0]
+	return &attr, nil
 }
