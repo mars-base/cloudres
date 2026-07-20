@@ -40,8 +40,7 @@ esac
 
 # --- resolve version --------------------------------------------------
 if [ "$TAG" = "latest" ]; then
-    RELEASE_URL="https://api.github.com/repos/${REPO}/releases/latest"
-    DOWNLOAD_URL=$(curl -fsSL "$RELEASE_URL" | grep "browser_download_url" | grep "/${BINARY}\$" | cut -d'"' -f4)
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${BINARY}"
 else
     DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${BINARY}"
 fi
