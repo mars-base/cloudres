@@ -177,6 +177,10 @@ func (m *appModel) renderUpperPanel() string {
 		sb.WriteString("  ")
 		if m.currentResource != "" {
 			sb.WriteString(selectedStyle.Render("▸ " + m.currentResource))
+			if m.filterInput != "" && !m.filterMode {
+				sb.WriteString("  ")
+				sb.WriteString(dimStyle.Render("/" + m.filterInput))
+			}
 		} else {
 			var types []string
 			for _, f := range m.fetchers {
@@ -192,6 +196,16 @@ func (m *appModel) renderUpperPanel() string {
 		sb.WriteByte('\n')
 		prompt := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#f7768e")).Render(":")
 		input := crumbActive.Render(m.commandInput)
+		cursor := lipgloss.NewStyle().Foreground(lipgloss.Color("#c0caf5")).Render("▏")
+		sb.WriteString(cmdStyle.Width(m.width).Render(prompt + input + cursor))
+		sb.WriteByte('\n')
+	}
+
+	// Filter input box
+	if m.filterMode {
+		sb.WriteByte('\n')
+		prompt := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7dcfff")).Render("/")
+		input := crumbActive.Render(m.filterInput)
 		cursor := lipgloss.NewStyle().Foreground(lipgloss.Color("#c0caf5")).Render("▏")
 		sb.WriteString(cmdStyle.Width(m.width).Render(prompt + input + cursor))
 		sb.WriteByte('\n')
@@ -228,9 +242,14 @@ func (m *appModel) renderLowerPanel(availableHeight int) string {
 		return m.viewCenteredBlock(availableHeight, "No "+m.currentResource+" resources found.")
 	}
 
+	resources := m.visibleResources()
+	if len(resources) == 0 {
+		return m.viewCenteredBlock(availableHeight, "No resources match filter \""+m.filterInput+"\".")
+	}
+
 	columns := core.Columns(m.currentResource)
-	rows := make([][]string, len(m.resources))
-	for i, r := range m.resources {
+	rows := make([][]string, len(resources))
+	for i, r := range resources {
 		rows[i] = r.Row()
 	}
 	return m.renderTable(columns, rows, availableHeight)
@@ -254,11 +273,12 @@ func (m *appModel) viewDetail() string {
 // renderDetailPanel renders the selected resource's key-value detail,
 // in place of the lower panel's resource table.
 func (m *appModel) renderDetailPanel(availableHeight int) string {
-	if m.cursor >= len(m.resources) {
+	resources := m.visibleResources()
+	if m.cursor >= len(resources) {
 		return m.viewCenteredBlock(availableHeight, "No resource selected.")
 	}
 
-	r := m.resources[m.cursor]
+	r := resources[m.cursor]
 	details := r.Detail()
 
 	var lines []string
@@ -341,6 +361,7 @@ func (m *appModel) viewFooter() string {
 			{":type", "resource"},
 			{"↑↓/jk", "navigate"},
 			{"d", "detail"},
+			{"/", "filter"},
 			{"esc", "back"},
 			{"q", "quit"},
 		}

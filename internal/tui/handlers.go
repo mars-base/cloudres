@@ -46,7 +46,13 @@ func (m *appModel) handleMainKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, m.keys.Back):
-		// Cascading back: resource → clear resource, region → clear region, else → provider
+		// Cascading back: filter → clear filter, resource → clear resource, region → clear region, else → provider
+		if m.filterInput != "" {
+			m.filterInput = ""
+			m.cursor = 0
+			m.offset = 0
+			return m, nil
+		}
 		if m.currentResource != "" {
 			m.currentResource = ""
 			m.resources = nil
@@ -68,13 +74,13 @@ func (m *appModel) handleMainKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case key.Matches(msg, m.keys.Down):
-		if m.cursor < len(m.resources)-1 {
+		if m.cursor < len(m.visibleResources())-1 {
 			m.cursor++
 		}
 		return m, nil
 
 	case key.Matches(msg, m.keys.Detail):
-		if m.cursor < len(m.resources) && len(m.resources) > 0 {
+		if m.cursor < len(m.visibleResources()) && len(m.visibleResources()) > 0 {
 			m.state = StateDetail
 		}
 		return m, nil
@@ -82,6 +88,12 @@ func (m *appModel) handleMainKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Command):
 		m.commandMode = true
 		m.commandInput = ""
+		return m, nil
+
+	case key.Matches(msg, m.keys.Filter):
+		if m.currentResource != "" {
+			m.filterMode = true
+		}
 		return m, nil
 	}
 
@@ -131,6 +143,38 @@ func (m *appModel) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		s := msg.String()
 		if len(s) == 1 {
 			m.commandInput += s
+		}
+		return m, nil
+	}
+}
+
+// ── Filter Mode (`/` — live substring filter over the resource table) ──
+
+func (m *appModel) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		// Keep the filter applied; just leave input editing.
+		m.filterMode = false
+		return m, nil
+	case "esc":
+		m.filterMode = false
+		m.filterInput = ""
+		m.cursor = 0
+		m.offset = 0
+		return m, nil
+	case "backspace":
+		if len(m.filterInput) > 0 {
+			m.filterInput = m.filterInput[:len(m.filterInput)-1]
+			m.cursor = 0
+			m.offset = 0
+		}
+		return m, nil
+	default:
+		s := msg.String()
+		if len(s) == 1 {
+			m.filterInput += s
+			m.cursor = 0
+			m.offset = 0
 		}
 		return m, nil
 	}

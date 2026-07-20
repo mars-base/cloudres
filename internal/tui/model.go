@@ -46,6 +46,11 @@ type appModel struct {
 	commandMode  bool
 	commandInput string
 
+	// Resource filter (`/` mode) — live substring filter over the
+	// currently loaded resource table.
+	filterMode  bool
+	filterInput string
+
 	// Lower table navigation
 	cursor int
 	offset int // scroll offset

@@ -9,6 +9,7 @@ type keyMap struct {
 	Quit    key.Binding
 	Detail  key.Binding
 	Command key.Binding
+	Filter  key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -36,6 +37,10 @@ func newKeyMap() keyMap {
 		Command: key.NewBinding(
 			key.WithKeys(":"),
 			key.WithHelp(":", "command"),
+		),
+		Filter: key.NewBinding(
+			key.WithKeys("/"),
+			key.WithHelp("/", "filter"),
 		),
 	}
 }

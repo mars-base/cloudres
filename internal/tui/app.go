@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mars-base/cloudres/internal/core"
@@ -59,6 +60,9 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.commandMode {
 			return m.handleCommandKey(msg)
 		}
+		if m.filterMode {
+			return m.handleFilterKey(msg)
+		}
 		return m.handleKey(msg)
 	}
 
@@ -90,6 +94,7 @@ func (m *appModel) selectProvider(p *core.Provider, profile string, regions []st
 	m.cursor = 0
 	m.offset = 0
 	m.err = nil
+	m.filterInput = ""
 	// Auto-select first region if available
 	if len(regions) > 0 {
 		m.currentRegion = regions[0]
@@ -106,6 +111,7 @@ func (m *appModel) selectRegion(region string) {
 	m.cursor = 0
 	m.offset = 0
 	m.err = nil
+	m.filterInput = ""
 }
 
 func (m *appModel) selectResourceType(rtype string) tea.Cmd {
@@ -117,5 +123,26 @@ func (m *appModel) selectResourceType(rtype string) tea.Cmd {
 	m.offset = 0
 	m.loading = true
 	m.err = nil
+	m.filterInput = ""
 	return m.fetchResourcesCmd()
+}
+
+// visibleResources returns m.resources filtered by the active `/` filter
+// (case-insensitive substring match against every displayed column), or
+// the full list when no filter is set.
+func (m *appModel) visibleResources() []core.Resource {
+	if m.filterInput == "" {
+		return m.resources
+	}
+	q := strings.ToLower(m.filterInput)
+	filtered := make([]core.Resource, 0, len(m.resources))
+	for _, r := range m.resources {
+		for _, v := range r.Row() {
+			if strings.Contains(strings.ToLower(v), q) {
+				filtered = append(filtered, r)
+				break
+			}
+		}
+	}
+	return filtered
 }
