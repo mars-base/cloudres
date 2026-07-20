@@ -16,10 +16,13 @@ type OSSFetcher struct{}
 func (f *OSSFetcher) ResourceType() string { return "oss" }
 
 func (f *OSSFetcher) Fetch(ctx context.Context, p *core.Provider) ([]core.Resource, error) {
-	// ossutil ls outputs text, not JSON
+	// ossutil ls outputs text, not JSON.
+	// NOTE: ossutil is a separate embedded binary invoked via the aliyun CLI
+	// wrapper; it silently ignores --profile when placed after the "ossutil"
+	// subcommand, so --profile must come before "ossutil" as a global flag.
 	args := []string{"ossutil", "ls"}
 	if p.ActiveProfile != "" {
-		args = append(args, "--profile", p.ActiveProfile)
+		args = append([]string{"--profile", p.ActiveProfile}, args...)
 	}
 	cmd := exec.CommandContext(ctx, "aliyun", args...)
 	out, err := cmd.Output()
