@@ -67,7 +67,12 @@ func (m *appModel) viewMain() string {
 	footer := m.viewFooter()
 	upper := m.renderUpperPanel()
 	separator := sepStyle.Render(strings.Repeat("─", m.width))
-	lower := m.renderLowerPanel()
+
+	// Lines already consumed by the other parts; whatever remains is the
+	// lower panel's available height, used to vertically center prompts.
+	used := len(toLines(header)) + len(toLines(upper)) + len(toLines(separator)) + len(toLines(footer))
+	available := max(0, m.height-used)
+	lower := m.renderLowerPanel(available)
 
 	return m.fitToHeight(header, upper, separator, lower, footer)
 }
@@ -199,25 +204,26 @@ func (m *appModel) renderUpperPanel() string {
 
 // ── Lower Panel ────────────────────────────────────────────────
 
-func (m *appModel) renderLowerPanel() string {
+func (m *appModel) renderLowerPanel(availableHeight int) string {
 	if len(m.currentRegions) == 0 {
-		return m.viewEmptyMsg(errorStyle.Render("No region configured for this profile.")) +
-			m.viewEmptyMsg("Set 'region_id' in " + m.currentProvider.ConfigPath + " for profile '" + m.currentProfile + "', then reopen the TUI.")
+		return m.viewCenteredBlock(availableHeight,
+			errorStyle.Render("No region configured for this profile."),
+			"Set 'region_id' in "+m.currentProvider.ConfigPath+" for profile '"+m.currentProfile+"', then reopen the TUI.")
 	}
 	if m.currentRegion == "" {
-		return m.viewEmptyMsg("Select a region (press number)")
+		return m.viewCenteredBlock(availableHeight, "Select a region (press number)")
 	}
 	if m.currentResource == "" {
-		return m.viewEmptyMsg("Press : then type resource name + Enter")
+		return m.viewCenteredBlock(availableHeight, "Press : then type resource name + Enter")
 	}
 	if m.loading {
-		return m.viewEmptyMsg("Loading " + m.currentResource + " resources...")
+		return m.viewCenteredBlock(availableHeight, "Loading "+m.currentResource+" resources...")
 	}
 	if m.err != nil {
-		return m.viewEmptyMsg(errorStyle.Render("Error: " + m.err.Error()))
+		return m.viewCenteredBlock(availableHeight, errorStyle.Render("Error: "+m.err.Error()))
 	}
 	if len(m.resources) == 0 {
-		return m.viewEmptyMsg("No " + m.currentResource + " resources found.")
+		return m.viewCenteredBlock(availableHeight, "No "+m.currentResource+" resources found.")
 	}
 
 	columns := core.Columns(m.currentResource)
@@ -228,14 +234,26 @@ func (m *appModel) renderLowerPanel() string {
 	return m.renderTable(columns, rows)
 }
 
-// ── Detail (full screen) ───────────────────────────────────────
+// ── Detail (overlays the lower panel, upper panel stays visible) ───
 
 func (m *appModel) viewDetail() string {
 	header := m.viewHeader()
 	footer := m.viewFooter()
+	upper := m.renderUpperPanel()
+	separator := sepStyle.Render(strings.Repeat("─", m.width))
 
+	used := len(toLines(header)) + len(toLines(upper)) + len(toLines(separator)) + len(toLines(footer))
+	available := max(0, m.height-used)
+	detail := m.renderDetailPanel(available)
+
+	return m.fitToHeight(header, upper, separator, detail, footer)
+}
+
+// renderDetailPanel renders the selected resource's key-value detail,
+// in place of the lower panel's resource table.
+func (m *appModel) renderDetailPanel(availableHeight int) string {
 	if m.cursor >= len(m.resources) {
-		return m.fitToHeight(header, m.viewEmptyMsg("No resource selected."), footer)
+		return m.viewCenteredBlock(availableHeight, "No resource selected.")
 	}
 
 	r := m.resources[m.cursor]
@@ -256,8 +274,7 @@ func (m *appModel) viewDetail() string {
 		lines = append(lines, "  "+label+"  "+value)
 	}
 
-	body := strings.Join(lines, "\n")
-	return m.fitToHeight(header, body, footer)
+	return strings.Join(lines, "\n")
 }
 
 // ── Header (breadcrumb) ───────────────────────────────────────
@@ -440,6 +457,26 @@ func (m *appModel) renderTable(columns []string, rows [][]string) string {
 
 func (m *appModel) viewEmptyMsg(message string) string {
 	return "  " + dimStyle.Render(message) + "\n"
+}
+
+// viewCenteredBlock renders lines left-aligned, vertically centered as a
+// block within availableHeight.
+func (m *appModel) viewCenteredBlock(availableHeight int, lines ...string) string {
+	rendered := make([]string, len(lines))
+	for i, l := range lines {
+		rendered[i] = "  " + dimStyle.Render(l)
+	}
+
+	topPad := max(0, (availableHeight-len(rendered))/2)
+	var sb strings.Builder
+	for range topPad {
+		sb.WriteByte('\n')
+	}
+	for _, l := range rendered {
+		sb.WriteString(l)
+		sb.WriteByte('\n')
+	}
+	return sb.String()
 }
 
 // ── Utilities ──────────────────────────────────────────────────
