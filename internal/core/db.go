@@ -129,9 +129,9 @@ func (d *DB) UpsertResources(resources []Resource) error {
 		return err
 	}
 	stmt, err := tx.Prepare(
-		`INSERT INTO resources (provider, resource_type, region, resource_id, resource_name, status, raw_json, synced_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(provider, resource_type, region, resource_id) DO UPDATE SET
+		`INSERT INTO resources (provider, profile, resource_type, region, resource_id, resource_name, status, raw_json, synced_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(provider, profile, resource_type, region, resource_id) DO UPDATE SET
 		   resource_name = excluded.resource_name,
 		   status = excluded.status,
 		   raw_json = excluded.raw_json,
@@ -145,7 +145,7 @@ func (d *DB) UpsertResources(resources []Resource) error {
 
 	for _, r := range resources {
 		if _, err := stmt.Exec(
-			r.Provider, r.ResourceType, r.Region, r.ResourceID,
+			r.Provider, r.Profile, r.ResourceType, r.Region, r.ResourceID,
 			r.ResourceName, r.Status, r.RawJSON, r.SyncedAt.Format(time.RFC3339),
 		); err != nil {
 			tx.Rollback()
@@ -155,11 +155,11 @@ func (d *DB) UpsertResources(resources []Resource) error {
 	return tx.Commit()
 }
 
-// ListResources returns resources filtered by provider, type, and optional region.
-func (d *DB) ListResources(provider, resourceType, region string) ([]Resource, error) {
-	query := `SELECT provider, resource_type, region, resource_id, resource_name, status, raw_json, synced_at
-		FROM resources WHERE provider = ? AND resource_type = ?`
-	args := []interface{}{provider, resourceType}
+// ListResources returns resources filtered by provider, profile, type, and optional region.
+func (d *DB) ListResources(provider, profile, resourceType, region string) ([]Resource, error) {
+	query := `SELECT provider, profile, resource_type, region, resource_id, resource_name, status, raw_json, synced_at
+		FROM resources WHERE provider = ? AND profile = ? AND resource_type = ?`
+	args := []interface{}{provider, profile, resourceType}
 
 	if region != "" {
 		query += " AND region = ?"
@@ -177,7 +177,7 @@ func (d *DB) ListResources(provider, resourceType, region string) ([]Resource, e
 	for rows.Next() {
 		var r Resource
 		var syncedAt string
-		if err := rows.Scan(&r.Provider, &r.ResourceType, &r.Region, &r.ResourceID,
+		if err := rows.Scan(&r.Provider, &r.Profile, &r.ResourceType, &r.Region, &r.ResourceID,
 			&r.ResourceName, &r.Status, &r.RawJSON, &syncedAt); err != nil {
 			return nil, err
 		}
@@ -188,15 +188,15 @@ func (d *DB) ListResources(provider, resourceType, region string) ([]Resource, e
 }
 
 // SearchResources searches resources by name or ID.
-func (d *DB) SearchResources(provider, resourceType, query string) ([]Resource, error) {
-	sql := `SELECT provider, resource_type, region, resource_id, resource_name, status, raw_json, synced_at
+func (d *DB) SearchResources(provider, profile, resourceType, query string) ([]Resource, error) {
+	sql := `SELECT provider, profile, resource_type, region, resource_id, resource_name, status, raw_json, synced_at
 		FROM resources
-		WHERE provider = ? AND resource_type = ?
+		WHERE provider = ? AND profile = ? AND resource_type = ?
 		  AND (resource_name LIKE ? OR resource_id LIKE ? OR region LIKE ?)
 		ORDER BY resource_name`
 	pattern := "%" + query + "%"
 
-	rows, err := d.db.Query(sql, provider, resourceType, pattern, pattern, pattern)
+	rows, err := d.db.Query(sql, provider, profile, resourceType, pattern, pattern, pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (d *DB) SearchResources(provider, resourceType, query string) ([]Resource, 
 	for rows.Next() {
 		var r Resource
 		var syncedAt string
-		if err := rows.Scan(&r.Provider, &r.ResourceType, &r.Region, &r.ResourceID,
+		if err := rows.Scan(&r.Provider, &r.Profile, &r.ResourceType, &r.Region, &r.ResourceID,
 			&r.ResourceName, &r.Status, &r.RawJSON, &syncedAt); err != nil {
 			return nil, err
 		}
@@ -216,13 +216,13 @@ func (d *DB) SearchResources(provider, resourceType, query string) ([]Resource, 
 	return resources, rows.Err()
 }
 
-// GetLastSyncTime returns the last successful sync time for a provider+resource type.
-func (d *DB) GetLastSyncTime(provider, resourceType string) (time.Time, error) {
+// GetLastSyncTime returns the last successful sync time for a provider+profile+resource type.
+func (d *DB) GetLastSyncTime(provider, profile, resourceType string) (time.Time, error) {
 	row := d.db.QueryRow(
 		`SELECT completed_at FROM sync_log
-		 WHERE provider = ? AND resource_type = ? AND status = 'success'
+		 WHERE provider = ? AND profile = ? AND resource_type = ? AND status = 'success'
 		 ORDER BY completed_at DESC LIMIT 1`,
-		provider, resourceType,
+		provider, profile, resourceType,
 	)
 	var completedAt string
 	if err := row.Scan(&completedAt); err != nil {
@@ -232,11 +232,11 @@ func (d *DB) GetLastSyncTime(provider, resourceType string) (time.Time, error) {
 }
 
 // InsertSyncLog creates a new sync log entry.
-func (d *DB) InsertSyncLog(provider, resourceType, region string) (int64, error) {
+func (d *DB) InsertSyncLog(provider, profile, resourceType, region string) (int64, error) {
 	result, err := d.db.Exec(
-		`INSERT INTO sync_log (provider, resource_type, region, started_at, status)
-		 VALUES (?, ?, ?, datetime('now'), 'running')`,
-		provider, resourceType, region,
+		`INSERT INTO sync_log (provider, profile, resource_type, region, started_at, status)
+		 VALUES (?, ?, ?, ?, datetime('now'), 'running')`,
+		provider, profile, resourceType, region,
 	)
 	if err != nil {
 		return 0, err

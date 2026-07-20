@@ -47,4 +47,35 @@ var migrations = []string{
 		error          TEXT NOT NULL DEFAULT '',
 		resource_count INTEGER NOT NULL DEFAULT 0
 	);`,
+
+	// Migration 2: partition cached resources (and sync log entries) by
+	// profile, so different profiles of the same provider no longer
+	// share/overwrite each other's rows when they overlap on
+	// (resource_type, region, resource_id).
+	`ALTER TABLE resources RENAME TO resources_old_v1;
+
+	CREATE TABLE resources (
+		id             INTEGER PRIMARY KEY AUTOINCREMENT,
+		provider       TEXT NOT NULL,
+		profile        TEXT NOT NULL DEFAULT '',
+		resource_type  TEXT NOT NULL,
+		region         TEXT NOT NULL DEFAULT '',
+		resource_id    TEXT NOT NULL,
+		resource_name  TEXT NOT NULL DEFAULT '',
+		status         TEXT NOT NULL DEFAULT '',
+		raw_json       TEXT NOT NULL DEFAULT '{}',
+		synced_at      TEXT NOT NULL DEFAULT (datetime('now')),
+		UNIQUE(provider, profile, resource_type, region, resource_id)
+	);
+
+	INSERT INTO resources (id, provider, profile, resource_type, region, resource_id, resource_name, status, raw_json, synced_at)
+	SELECT id, provider, '', resource_type, region, resource_id, resource_name, status, raw_json, synced_at FROM resources_old_v1;
+
+	DROP TABLE resources_old_v1;
+
+	CREATE INDEX IF NOT EXISTS idx_resources_provider_type ON resources(provider, resource_type);
+	CREATE INDEX IF NOT EXISTS idx_resources_region ON resources(provider, resource_type, region);
+	CREATE INDEX IF NOT EXISTS idx_resources_profile ON resources(provider, profile, resource_type, region);
+
+	ALTER TABLE sync_log ADD COLUMN profile TEXT NOT NULL DEFAULT '';`,
 }

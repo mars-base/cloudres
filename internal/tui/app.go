@@ -81,6 +81,7 @@ func (m *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *appModel) selectProvider(p *core.Provider, profile string, regions []string) {
 	m.currentProvider = p
+	m.currentProvider.ActiveProfile = profile
 	m.currentProfile = profile
 	m.currentRegions = regions
 	m.fetchers = m.registry.FetchersFor(p.Name)

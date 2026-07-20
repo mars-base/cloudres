@@ -21,6 +21,7 @@ type Provider struct {
 // Resource represents a single cloud resource cached in SQLite.
 type Resource struct {
 	Provider     string    `json:"provider"`
+	Profile      string    `json:"profile"`
 	ResourceType string    `json:"resource_type"`
 	Region       string    `json:"region"`
 	ResourceID   string    `json:"resource_id"`
