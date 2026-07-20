@@ -259,6 +259,7 @@ func (r Resource) tairDetail() [][2]string {
 		InstanceClass     string `json:"InstanceClass"`
 		ShardCount        int    `json:"ShardCount"`
 		RealInstanceClass string `json:"RealInstanceClass"`
+		Capacity          int64  `json:"Capacity"`
 		Bandwidth         int    `json:"Bandwidth"`
 		Connections       int64  `json:"Connections"`
 		QPS               int64  `json:"QPS"`
@@ -286,7 +287,16 @@ func (r Resource) tairDetail() [][2]string {
 	if d.RealInstanceClass != "" {
 		pairs = append(pairs, [2]string{"RealClass", d.RealInstanceClass})
 	}
-	if d.ShardCount > 0 {
+	// Capacity is total memory (MB); show total + per-shard when shard count > 1.
+	if d.Capacity > 0 {
+		if d.ShardCount > 1 {
+			perShard := formatBytes(d.Capacity * 1024 * 1024 / int64(d.ShardCount))
+			pairs = append(pairs, [2]string{"Capacity", fmt.Sprintf("%s (%d shards × %s)",
+				formatBytes(d.Capacity*1024*1024), d.ShardCount, perShard)})
+		} else {
+			pairs = append(pairs, [2]string{"Capacity", formatBytes(d.Capacity * 1024 * 1024)})
+		}
+	} else if d.ShardCount > 0 {
 		pairs = append(pairs, [2]string{"Shards", itoa(d.ShardCount)})
 	}
 	if d.Bandwidth > 0 {

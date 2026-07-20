@@ -16,6 +16,7 @@ import (
 type tairAttr struct {
 	ShardCount        int    `json:"ShardCount"`
 	RealInstanceClass string `json:"RealInstanceClass"`
+	Capacity          int64  `json:"Capacity"`
 	Bandwidth         int    `json:"Bandwidth"`
 	Connections       int64  `json:"Connections"`
 	QPS               int64  `json:"QPS"`
@@ -125,6 +126,7 @@ func fetchTairRegion(ctx context.Context, p *core.Provider, region string) ([]co
 				QuotaMemory       int64  `json:"QuotaMemory"`
 				ShardCount        int    `json:"ShardCount"`
 				RealInstanceClass string `json:"RealInstanceClass"`
+				Capacity          int64  `json:"Capacity"`
 				Bandwidth         int    `json:"Bandwidth"`
 				Connections       int64  `json:"Connections"`
 				QPS               int64  `json:"QPS"`
@@ -134,6 +136,7 @@ func fetchTairRegion(ctx context.Context, p *core.Provider, region string) ([]co
 				QuotaMemory:       usage.QuotaMemory,
 				ShardCount:        attr.ShardCount,
 				RealInstanceClass: attr.RealInstanceClass,
+				Capacity:          attr.Capacity,
 				Bandwidth:         attr.Bandwidth,
 				Connections:       attr.Connections,
 				QPS:               attr.QPS,
