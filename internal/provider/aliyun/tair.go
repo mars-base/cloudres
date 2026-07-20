@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/mars-base/cloudres/internal/core"
@@ -65,6 +66,14 @@ type tairInstance struct {
 // accounts with more instances than that would silently lose results.
 const tairPageSize = 50
 
+// tairMemoryUsage mirrors the (only, non-configurable) default response of
+// DescribeHistoryMonitorValues when MonitorKeys is omitted: used/quota
+// memory in bytes, as strings with decimal fractions.
+type tairMemoryUsage struct {
+	UsedMemory  int64
+	QuotaMemory int64
+}
+
 func fetchTairRegion(ctx context.Context, p *core.Provider, region string) ([]core.Resource, error) {
 	var allResources []core.Resource
 	now := time.Now()
@@ -89,7 +98,22 @@ func fetchTairRegion(ctx context.Context, p *core.Provider, region string) ([]co
 		}
 
 		for _, inst := range resp.Instances.KVStoreInstance {
-			rawJSON, _ := json.Marshal(inst)
+			usage, err := fetchTairMemoryUsage(ctx, p, inst.InstanceID)
+			if err != nil {
+				// Usage is best-effort monitoring data: don't fail the whole
+				// sync over a single instance's monitor lookup.
+				usage = &tairMemoryUsage{}
+			}
+
+			rawJSON, _ := json.Marshal(struct {
+				tairInstance
+				UsedMemory  int64 `json:"UsedMemory"`
+				QuotaMemory int64 `json:"QuotaMemory"`
+			}{
+				tairInstance: inst,
+				UsedMemory:   usage.UsedMemory,
+				QuotaMemory:  usage.QuotaMemory,
+			})
 			allResources = append(allResources, core.Resource{
 				Provider:     "aliyun",
 				ResourceType: "tair",
@@ -108,4 +132,59 @@ func fetchTairRegion(ctx context.Context, p *core.Provider, region string) ([]co
 	}
 
 	return allResources, nil
+}
+
+// fetchTairMemoryUsage calls DescribeHistoryMonitorValues for a single
+// instance, requesting just the most recent data point in a narrow window
+// (there's no "current usage" API — only historical monitoring — so we ask
+// for the last few minutes and take the latest sample). Returns zero values
+// if the instance has no recent monitoring data yet (e.g. newly created).
+func fetchTairMemoryUsage(ctx context.Context, p *core.Provider, instanceID string) (*tairMemoryUsage, error) {
+	now := time.Now().UTC()
+	start := now.Add(-10 * time.Minute)
+	args := []string{"r-kvstore", "DescribeHistoryMonitorValues",
+		"--InstanceId", instanceID,
+		"--StartTime", start.Format("2006-01-02T15:04:05Z"),
+		"--EndTime", now.Format("2006-01-02T15:04:05Z"),
+		"--IntervalForHistory", "01m",
+	}
+	out, err := runAliyun(ctx, args, p.ActiveProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp struct {
+		MonitorHistory string `json:"MonitorHistory"`
+	}
+	if err := json.Unmarshal(out, &resp); err != nil {
+		return nil, fmt.Errorf("parse tair monitor response: %w", err)
+	}
+	if resp.MonitorHistory == "" {
+		return &tairMemoryUsage{}, nil
+	}
+
+	// MonitorHistory is itself a JSON-encoded string, keyed by timestamp:
+	// {"2026-07-20T06:47:55Z":{"UsedMemory":"6030825520","quotaMemory":"34359738368"}}
+	var byTime map[string]struct {
+		UsedMemory  string `json:"UsedMemory"`
+		QuotaMemory string `json:"quotaMemory"`
+	}
+	if err := json.Unmarshal([]byte(resp.MonitorHistory), &byTime); err != nil {
+		return nil, fmt.Errorf("parse tair monitor history: %w", err)
+	}
+
+	var latestKey string
+	for k := range byTime {
+		if k > latestKey {
+			latestKey = k
+		}
+	}
+	if latestKey == "" {
+		return &tairMemoryUsage{}, nil
+	}
+
+	sample := byTime[latestKey]
+	used, _ := strconv.ParseFloat(sample.UsedMemory, 64)
+	quota, _ := strconv.ParseFloat(sample.QuotaMemory, 64)
+	return &tairMemoryUsage{UsedMemory: int64(used), QuotaMemory: int64(quota)}, nil
 }

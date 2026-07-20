@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -464,43 +466,17 @@ func (m *appModel) renderTable(columns []string, rows [][]string, availableHeigh
 		row := rows[i]
 
 		if i == m.cursor {
-			var line strings.Builder
-			for j, v := range row {
-				if j < len(widths) {
-					line.WriteString(padRight(truncateStr(v, widths[j]), widths[j]))
-					if j < len(widths)-1 {
-						line.WriteString("  ")
-					}
-				}
-			}
 			sb.WriteString("  ")
-			sb.WriteString(selectedStyle.Render("▸ " + line.String()))
+			sb.WriteString(selectedStyle.Render("▸ "))
+			sb.WriteString(m.renderRowCells(row, widths, selectedStyle, 0))
 		} else if hasLetterKeys && len(row[0]) == 1 {
 			sb.WriteString("  ")
 			sb.WriteString(letterStyle.Render(row[0]))
-			var rest strings.Builder
-			for j := 1; j < len(row); j++ {
-				if j < len(widths) {
-					if j > 1 {
-						rest.WriteString("  ")
-					}
-					rest.WriteString(padRight(truncateStr(row[j], widths[j]), widths[j]))
-				}
-			}
 			sb.WriteString("  ")
-			sb.WriteString(rowStyle.Render(rest.String()))
+			sb.WriteString(m.renderRowCells(row, widths, rowStyle, 1))
 		} else {
-			var line strings.Builder
-			for j, v := range row {
-				if j < len(widths) {
-					line.WriteString(padRight(truncateStr(v, widths[j]), widths[j]))
-					if j < len(widths)-1 {
-						line.WriteString("  ")
-					}
-				}
-			}
 			sb.WriteString("  ")
-			sb.WriteString(rowStyle.Render(line.String()))
+			sb.WriteString(m.renderRowCells(row, widths, rowStyle, 0))
 		}
 		sb.WriteByte('\n')
 	}
@@ -516,6 +492,46 @@ func (m *appModel) renderTable(columns []string, rows [][]string, availableHeigh
 		sb.WriteByte('\n')
 	}
 
+	return sb.String()
+}
+
+// percentCellRe matches a percentage embedded in a cell value, e.g. "68.5%"
+// or "16.2GB/100.0GB (142.3%)" — used to color usage cells red when over
+// capacity, green when within it.
+var percentCellRe = regexp.MustCompile(`(\d+(?:\.\d+)?)%`)
+
+// renderRowCells pads/truncates each cell to its column width and renders
+// the row with baseStyle, except cells containing a percentage — those are
+// colored green (<=100%) or red (>100%) regardless of baseStyle, so usage
+// figures stand out whether or not the row is selected.
+//
+// startCol lets callers skip a leading column already rendered separately
+// (e.g. the single-letter selection key), so widths/row stay index-aligned.
+func (m *appModel) renderRowCells(row []string, widths []int, baseStyle lipgloss.Style, startCol int) string {
+	var sb strings.Builder
+	first := true
+	for j := startCol; j < len(row); j++ {
+		if j >= len(widths) {
+			break
+		}
+		if !first {
+			sb.WriteString("  ")
+		}
+		first = false
+
+		cell := padRight(truncateStr(row[j], widths[j]), widths[j])
+		if m := percentCellRe.FindStringSubmatch(row[j]); m != nil {
+			if pct, err := strconv.ParseFloat(m[1], 64); err == nil {
+				if pct > 100 {
+					sb.WriteString(usageOverStyle.Render(cell))
+					continue
+				}
+				sb.WriteString(usageOkStyle.Render(cell))
+				continue
+			}
+		}
+		sb.WriteString(baseStyle.Render(cell))
+	}
 	return sb.String()
 }
 

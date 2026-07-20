@@ -2,7 +2,29 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 )
+
+// formatBytes renders a byte count as a human-readable size (GB, with one
+// decimal place, since DB/cache usage figures are reported in bytes but
+// meaningfully compared in gigabytes). Returns "-" for non-positive/unknown
+// values, e.g. when the underlying API omitted the field.
+func formatBytes(b int64) string {
+	if b <= 0 {
+		return "-"
+	}
+	const gb = 1024 * 1024 * 1024
+	return fmt.Sprintf("%.1fGB", float64(b)/gb)
+}
+
+// formatPercent renders a used/quota ratio as a percentage with one decimal
+// place. Returns "-" if quota is non-positive (unknown/no data).
+func formatPercent(used, quota int64) string {
+	if quota <= 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%.1f%%", float64(used)/float64(quota)*100)
+}
 
 func (r Resource) ecsRow() []string {
 	var d struct {
@@ -40,27 +62,44 @@ func (r Resource) vswRow() []string {
 
 func (r Resource) rdsRow() []string {
 	var d struct {
-		Engine string `json:"Engine"`
+		Engine   string `json:"Engine"`
+		DiskUsed int64  `json:"DiskUsed"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
-	return []string{r.ResourceID, r.ResourceName, r.Status, d.Engine}
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.Engine, formatBytes(d.DiskUsed)}
 }
 
 func (r Resource) tairRow() []string {
 	var d struct {
 		InstanceType  string `json:"InstanceType"`
 		InstanceClass string `json:"InstanceClass"`
+		UsedMemory    int64  `json:"UsedMemory"`
+		QuotaMemory   int64  `json:"QuotaMemory"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
-	return []string{r.ResourceID, r.ResourceName, r.Status, d.InstanceType, d.InstanceClass}
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.InstanceType, d.InstanceClass, formatPercent(d.UsedMemory, d.QuotaMemory)}
 }
 
 func (r Resource) polarDBRow() []string {
 	var d struct {
-		Engine string `json:"Engine"`
+		Engine         string `json:"Engine"`
+		StorageUsed    int64  `json:"StorageUsed"`
+		StorageSpace   int64  `json:"StorageSpace"`
+		StoragePayType string `json:"StoragePayType"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
-	return []string{r.ResourceID, r.ResourceName, r.Status, d.Engine}
+	// StorageSpace is only a meaningful cap for Prepaid (包年包月) storage —
+	// for Postpaid (按量付费/弹性存储) it's not a real limit and StorageUsed
+	// can legitimately exceed it, so showing "used/space" (and a % of it)
+	// there is misleading.
+	var usage string
+	if d.StoragePayType == "Prepaid" {
+		usage = formatBytes(d.StorageUsed) + "/" + formatBytes(d.StorageSpace) +
+			" (" + formatPercent(d.StorageUsed, d.StorageSpace) + ")"
+	} else {
+		usage = formatBytes(d.StorageUsed)
+	}
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.Engine, usage}
 }
 
 func (r Resource) ossRow() []string {
@@ -170,6 +209,9 @@ func (r Resource) rdsDetail() [][2]string {
 		VpcId                 string `json:"VpcId"`
 		CreateTime            string `json:"CreateTime"`
 		ExpireTime            string `json:"ExpireTime"`
+		DataSize              int64  `json:"DataSize"`
+		DiskUsed              int64  `json:"DiskUsed"`
+		BackupSize            int64  `json:"BackupSize"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	return [][2]string{
@@ -182,6 +224,9 @@ func (r Resource) rdsDetail() [][2]string {
 		{"Class", d.DBInstanceClass},
 		{"Memory(MB)", itoa(d.DBInstanceMemory)},
 		{"Storage", d.DBInstanceStorageType},
+		{"DiskUsed", formatBytes(d.DiskUsed)},
+		{"DataSize", formatBytes(d.DataSize)},
+		{"BackupSize", formatBytes(d.BackupSize)},
 		{"PayType", d.PayType},
 		{"Endpoint", d.ConnectionString},
 		{"VPC", d.VpcId},
@@ -216,6 +261,8 @@ func (r Resource) tairDetail() [][2]string {
 		ChargeType    string `json:"ChargeType"`
 		CreateTime    string `json:"CreateTime"`
 		EndTime       string `json:"EndTime"`
+		UsedMemory    int64  `json:"UsedMemory"`
+		QuotaMemory   int64  `json:"QuotaMemory"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	return [][2]string{
@@ -228,6 +275,9 @@ func (r Resource) tairDetail() [][2]string {
 		{"Edition", d.EditionType},
 		{"Version", d.EngineVersion},
 		{"Class", d.InstanceClass},
+		{"MemoryUsed", formatBytes(d.UsedMemory)},
+		{"MemoryQuota", formatBytes(d.QuotaMemory)},
+		{"MemoryUsage", formatPercent(d.UsedMemory, d.QuotaMemory)},
 		{"ChargeType", d.ChargeType},
 		{"VPC", d.VpcId},
 		{"VSwitch", d.VSwitchId},
@@ -238,15 +288,29 @@ func (r Resource) tairDetail() [][2]string {
 
 func (r Resource) polarDBDetail() [][2]string {
 	var d struct {
-		Engine       string `json:"Engine"`
-		DBVersion    string `json:"DBVersion"`
-		DBNodeClass  string `json:"DBNodeClass"`
-		DBNodeNumber string `json:"DBNodeNumber"`
-		PayType      string `json:"PayType"`
-		CreateTime   string `json:"CreateTime"`
-		ExpireTime   string `json:"ExpireTime"`
+		Engine         string `json:"Engine"`
+		DBVersion      string `json:"DBVersion"`
+		DBNodeClass    string `json:"DBNodeClass"`
+		DBNodeNumber   string `json:"DBNodeNumber"`
+		PayType        string `json:"PayType"`
+		CreateTime     string `json:"CreateTime"`
+		ExpireTime     string `json:"ExpireTime"`
+		StorageUsed    int64  `json:"StorageUsed"`
+		StorageSpace   int64  `json:"StorageSpace"`
+		StorageType    string `json:"StorageType"`
+		StoragePayType string `json:"StoragePayType"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	storageSpace := "-"
+	if d.StoragePayType == "Prepaid" {
+		storageSpace = formatBytes(d.StorageSpace) + " (prepaid)"
+	} else if d.StoragePayType != "" {
+		storageSpace = "- (postpaid, no fixed cap)"
+	}
+	usagePct := "-"
+	if d.StoragePayType == "Prepaid" {
+		usagePct = formatPercent(d.StorageUsed, d.StorageSpace)
+	}
 	return [][2]string{
 		{"ID", r.ResourceID},
 		{"Name", r.ResourceName},
@@ -255,6 +319,10 @@ func (r Resource) polarDBDetail() [][2]string {
 		{"Engine", d.Engine + " " + d.DBVersion},
 		{"NodeClass", d.DBNodeClass},
 		{"NodeCount", d.DBNodeNumber},
+		{"StorageType", d.StorageType},
+		{"StorageUsed", formatBytes(d.StorageUsed)},
+		{"StorageSpace", storageSpace},
+		{"StorageUsagePct", usagePct},
 		{"PayType", d.PayType},
 		{"Created", d.CreateTime},
 		{"Expires", d.ExpireTime},

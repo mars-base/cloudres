@@ -55,6 +55,14 @@ type polarDBCluster struct {
 	RegionID             string `json:"RegionId"`
 	CreateTime           string `json:"CreateTime"`
 	ExpireTime           string `json:"ExpireTime"`
+	StorageUsed          int64  `json:"StorageUsed"`
+	StorageSpace         int64  `json:"StorageSpace"`
+	StorageType          string `json:"StorageType"`
+	// StoragePayType tells whether StorageSpace is meaningful: it's the
+	// prepaid (包年包月) purchased capacity when "Prepaid", but for
+	// "Postpaid" (按量付费/弹性存储) clusters StorageSpace isn't a real cap —
+	// StorageUsed can legitimately exceed it.
+	StoragePayType string `json:"StoragePayType"`
 }
 
 // polarDBPageSize is the page size requested per DescribeDBClusters call.

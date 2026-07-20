@@ -94,6 +94,16 @@ var (
 	errorStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("#f7768e"))
+
+	// Usage percentage within capacity (<=100%)
+	usageOkStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#9ece6a"))
+
+	// Usage percentage over capacity (>100%) — flags e.g. a PolarDB cluster
+	// whose actual storage usage has exceeded its prepaid/purchased space.
+	usageOverStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#f7768e"))
 )
 
 // ── Footer hint builder ─────────────────────────────────────
