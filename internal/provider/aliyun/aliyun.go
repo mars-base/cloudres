@@ -45,7 +45,7 @@ func (d *Detector) Detect(ctx context.Context) (*core.Provider, error) {
 		return nil, nil // no config
 	}
 
-	profiles, profileRegions, err := parseAliyunConfig(configPath)
+	profiles, profileRegions, currentProfile, err := parseAliyunConfig(configPath)
 	if err != nil {
 		return nil, nil // config parse error, skip silently
 	}
@@ -63,6 +63,14 @@ func (d *Detector) Detect(ctx context.Context) (*core.Provider, error) {
 		regions = append(regions, r)
 	}
 
+	// Use the config's "current" profile as ActiveProfile so that CLI
+	// commands (and the TUI) default to the user's chosen profile rather
+	// than the alphabetically-first one.
+	active := currentProfile
+	if active == "" && len(profiles) > 0 {
+		active = profiles[0]
+	}
+
 	return &core.Provider{
 		Name:           "aliyun",
 		CLIPath:        cliPath,
@@ -70,6 +78,7 @@ func (d *Detector) Detect(ctx context.Context) (*core.Provider, error) {
 		Profiles:       profiles,
 		Regions:        regions,
 		ProfileRegions: profileRegions,
+		ActiveProfile:  active,
 	}, nil
 }
 
@@ -90,15 +99,15 @@ type aliyunConfig struct {
 	} `json:"profiles"`
 }
 
-func parseAliyunConfig(path string) (profiles []string, profileRegions map[string][]string, err error) {
+func parseAliyunConfig(path string) (profiles []string, profileRegions map[string][]string, current string, err error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	var cfg aliyunConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 
 	profileRegions = make(map[string][]string)
@@ -111,5 +120,5 @@ func parseAliyunConfig(path string) (profiles []string, profileRegions map[strin
 		profileRegions[p.Name] = regions
 	}
 
-	return profiles, profileRegions, nil
+	return profiles, profileRegions, cfg.Current, nil
 }

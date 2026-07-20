@@ -78,4 +78,23 @@ var migrations = []string{
 	CREATE INDEX IF NOT EXISTS idx_resources_profile ON resources(provider, profile, resource_type, region);
 
 	ALTER TABLE sync_log ADD COLUMN profile TEXT NOT NULL DEFAULT '';`,
+
+		// Migration 3: normalize "oss-cn-..." region values.
+		// Old OSS fetcher code stored the raw region from ossutil
+		// (e.g. "oss-cn-hangzhou"); the TrimPrefix fix added later
+		// produces "cn-hangzhou". Both forms coexist under the UNIQUE
+		// constraint, causing duplicate rows per bucket.
+		// First delete the "oss-*" rows that have a corrected
+		// counterpart, then rename any remaining "oss-*" rows.
+		`DELETE FROM resources WHERE resource_type = 'oss' AND region LIKE 'oss-%'
+			AND EXISTS (
+				SELECT 1 FROM resources r2
+				WHERE r2.resource_type = 'oss'
+					AND r2.region = substr(resources.region, 5)
+					AND r2.resource_id = resources.resource_id
+					AND r2.provider = resources.provider
+					AND r2.profile = resources.profile
+			);
+		UPDATE resources SET region = substr(region, 5)
+			WHERE resource_type = 'oss' AND region LIKE 'oss-%';`,
 }

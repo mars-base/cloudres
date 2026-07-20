@@ -58,6 +58,13 @@ func runResourceCommand(ctx context.Context, reg *provider.Registry, providerNam
 		return err
 	}
 
+	// Pick first profile as the active one for CLI mode, so cached
+	// results are scoped per-profile (matching TUI behavior) and
+	// resources queried against the correct credentials.
+	if p.ActiveProfile == "" && len(p.Profiles) > 0 {
+		p.ActiveProfile = p.Profiles[0]
+	}
+
 	// Save detected provider
 	db.UpsertProvider(*p)
 
