@@ -52,6 +52,37 @@ make build
 ./build/cloudres
 ```
 
+### Install from GitHub releases (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/install.sh | bash
+```
+
+Install a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/install.sh | bash -s v1.0.0
+```
+
+Custom install directory:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/install.sh | INSTALL_DIR=~/bin bash
+```
+
+### Install from GitHub releases (Windows PowerShell)
+
+```powershell
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/install.ps1 -OutFile install.ps1
+.\install.ps1
+
+# Specific version
+.\install.ps1 -Tag v1.0.0
+
+# Custom directory
+.\install.ps1 -InstallDir C:\tools
+```
+
 ### Install via `go install`
 
 ```bash
@@ -103,8 +134,11 @@ cloudres sync aliyun
 ### Query resources from CLI
 
 ```bash
-# List ECS instances
+# List ECS instances (uses current profile from config)
 cloudres aliyun ecs
+
+# Use a specific profile
+cloudres aliyun ecs --profile production
 
 # List resources in a specific region
 cloudres aliyun ecs --region cn-hangzhou
