@@ -121,16 +121,6 @@ Output:
   aliyun    default  cn-hangzhou, cn-shanghai
 ```
 
-### Sync resources
-
-```bash
-# Sync all providers
-cloudres sync
-
-# Sync a specific provider
-cloudres sync aliyun
-```
-
 ### Query resources from CLI
 
 ```bash
