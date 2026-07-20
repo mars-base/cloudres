@@ -42,6 +42,10 @@ func Columns(resourceType string) []string {
 		return []string{"ID", "Name", "CIDR", "Zone", "Status"}
 	case "rds":
 		return []string{"ID", "Name", "Status", "Engine"}
+	case "tair":
+		return []string{"ID", "Name", "Status", "Type", "Class"}
+	case "pdb":
+		return []string{"ID", "Name", "Status", "Engine"}
 	case "oss":
 		return []string{"Bucket", "Region", "Class"}
 	default:
@@ -60,6 +64,10 @@ func (r Resource) Detail() [][2]string {
 		return r.vswDetail()
 	case "rds":
 		return r.rdsDetail()
+	case "tair":
+		return r.tairDetail()
+	case "pdb":
+		return r.polarDBDetail()
 	case "oss":
 		return r.ossDetail()
 	default:
@@ -83,6 +91,10 @@ func (r Resource) Row() []string {
 		return r.vswRow()
 	case "rds":
 		return r.rdsRow()
+	case "tair":
+		return r.tairRow()
+	case "pdb":
+		return r.polarDBRow()
 	case "oss":
 		return r.ossRow()
 	default:

@@ -8,11 +8,13 @@ package core
 // prompting for a resource type (e.g. "vsw" -> "VSwitch").
 var resourceTypeLabels = map[string]map[string]string{
 	"aliyun": {
-		"ecs": "Elastic Compute Service",
-		"vpc": "Virtual Private Cloud",
-		"vsw": "VSwitch (Subnet)",
-		"rds": "Relational Database Service",
-		"oss": "Object Storage Service",
+		"ecs":  "Elastic Compute Service",
+		"vpc":  "Virtual Private Cloud",
+		"vsw":  "VSwitch (Subnet)",
+		"rds":  "Relational Database Service",
+		"tair": "Tair (Redis-compatible)",
+		"pdb":  "PolarDB",
+		"oss":  "Object Storage Service",
 	},
 }
 

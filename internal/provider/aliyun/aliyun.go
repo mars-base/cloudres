@@ -19,7 +19,7 @@ func NewDetector() *Detector {
 func (d *Detector) Name() string { return "aliyun" }
 
 func (d *Detector) ResourceTypes() []string {
-	return []string{"ecs", "vpc", "vsw", "rds", "oss"}
+	return []string{"ecs", "vpc", "vsw", "rds", "tair", "pdb", "oss"}
 }
 
 func (d *Detector) Fetchers() []core.ResourceFetcher {
@@ -28,6 +28,8 @@ func (d *Detector) Fetchers() []core.ResourceFetcher {
 		&VPCFetcher{},
 		&VSwitchFetcher{},
 		&RDSFetcher{},
+		&TairFetcher{},
+		&PolarDBFetcher{},
 		&OSSFetcher{},
 	}
 }

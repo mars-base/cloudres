@@ -46,6 +46,23 @@ func (r Resource) rdsRow() []string {
 	return []string{r.ResourceID, r.ResourceName, r.Status, d.Engine}
 }
 
+func (r Resource) tairRow() []string {
+	var d struct {
+		InstanceType  string `json:"InstanceType"`
+		InstanceClass string `json:"InstanceClass"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.InstanceType, d.InstanceClass}
+}
+
+func (r Resource) polarDBRow() []string {
+	var d struct {
+		Engine string `json:"Engine"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.Engine}
+}
+
 func (r Resource) ossRow() []string {
 	var d struct {
 		StorageClass string `json:"StorageClass"`
@@ -184,5 +201,62 @@ func (r Resource) ossDetail() [][2]string {
 		{"Region", r.Region},
 		{"StorageClass", d.StorageClass},
 		{"Created", d.CreationTime},
+	}
+}
+
+func (r Resource) tairDetail() [][2]string {
+	var d struct {
+		InstanceType  string `json:"InstanceType"`
+		EditionType   string `json:"EditionType"`
+		EngineVersion string `json:"EngineVersion"`
+		InstanceClass string `json:"InstanceClass"`
+		ZoneId        string `json:"ZoneId"`
+		VpcId         string `json:"VpcId"`
+		VSwitchId     string `json:"VSwitchId"`
+		ChargeType    string `json:"ChargeType"`
+		CreateTime    string `json:"CreateTime"`
+		EndTime       string `json:"EndTime"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", r.Region},
+		{"Zone", d.ZoneId},
+		{"Type", d.InstanceType},
+		{"Edition", d.EditionType},
+		{"Version", d.EngineVersion},
+		{"Class", d.InstanceClass},
+		{"ChargeType", d.ChargeType},
+		{"VPC", d.VpcId},
+		{"VSwitch", d.VSwitchId},
+		{"Created", d.CreateTime},
+		{"Expires", d.EndTime},
+	}
+}
+
+func (r Resource) polarDBDetail() [][2]string {
+	var d struct {
+		Engine       string `json:"Engine"`
+		DBVersion    string `json:"DBVersion"`
+		DBNodeClass  string `json:"DBNodeClass"`
+		DBNodeNumber string `json:"DBNodeNumber"`
+		PayType      string `json:"PayType"`
+		CreateTime   string `json:"CreateTime"`
+		ExpireTime   string `json:"ExpireTime"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", r.Region},
+		{"Engine", d.Engine + " " + d.DBVersion},
+		{"NodeClass", d.DBNodeClass},
+		{"NodeCount", d.DBNodeNumber},
+		{"PayType", d.PayType},
+		{"Created", d.CreateTime},
+		{"Expires", d.ExpireTime},
 	}
 }
