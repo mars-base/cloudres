@@ -72,12 +72,13 @@ func (r Resource) rdsRow() []string {
 func (r Resource) tairRow() []string {
 	var d struct {
 		InstanceType  string `json:"InstanceType"`
-		InstanceClass string `json:"InstanceClass"`
+		EditionType   string `json:"EditionType"`
+		EngineVersion string `json:"EngineVersion"`
 		UsedMemory    int64  `json:"UsedMemory"`
 		QuotaMemory   int64  `json:"QuotaMemory"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
-	return []string{r.ResourceID, r.ResourceName, r.Status, d.InstanceType, d.InstanceClass, formatPercent(d.UsedMemory, d.QuotaMemory)}
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.InstanceType, d.EditionType, d.EngineVersion, formatPercent(d.UsedMemory, d.QuotaMemory)}
 }
 
 func (r Resource) polarDBRow() []string {

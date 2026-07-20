@@ -43,7 +43,7 @@ func Columns(resourceType string) []string {
 	case "rds":
 		return []string{"ID", "Name", "Status", "Engine", "Usage"}
 	case "tair":
-		return []string{"ID", "Name", "Status", "Type", "Class", "Memory"}
+		return []string{"ID", "Name", "Status", "Type", "Edition", "Version", "Memory"}
 	case "pdb":
 		return []string{"ID", "Name", "Status", "Engine", "Usage"}
 	case "oss":
