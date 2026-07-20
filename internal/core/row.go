@@ -289,17 +289,20 @@ func (r Resource) tairDetail() [][2]string {
 
 func (r Resource) polarDBDetail() [][2]string {
 	var d struct {
-		Engine         string `json:"Engine"`
-		DBVersion      string `json:"DBVersion"`
-		DBNodeClass    string `json:"DBNodeClass"`
-		DBNodeNumber   string `json:"DBNodeNumber"`
-		PayType        string `json:"PayType"`
-		CreateTime     string `json:"CreateTime"`
-		ExpireTime     string `json:"ExpireTime"`
-		StorageUsed    int64  `json:"StorageUsed"`
-		StorageSpace   int64  `json:"StorageSpace"`
-		StorageType    string `json:"StorageType"`
-		StoragePayType string `json:"StoragePayType"`
+		Engine                string `json:"Engine"`
+		DBVersion             string `json:"DBVersion"`
+		DBNodeClass           string `json:"DBNodeClass"`
+		DBNodeNumber          string `json:"DBNodeNumber"`
+		PayType               string `json:"PayType"`
+		CreateTime            string `json:"CreateTime"`
+		ExpireTime            string `json:"ExpireTime"`
+		StorageUsed           int64  `json:"StorageUsed"`
+		StorageSpace          int64  `json:"StorageSpace"`
+		StorageType           string `json:"StorageType"`
+		StoragePayType        string `json:"StoragePayType"`
+		PrimaryEndpoint       string `json:"PrimaryEndpoint"`
+		PrimaryEndpointPublic string `json:"PrimaryEndpointPublic"`
+		ClusterEndpoint       string `json:"ClusterEndpoint"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	storageSpace := "-"
@@ -325,6 +328,9 @@ func (r Resource) polarDBDetail() [][2]string {
 		{"StorageSpace", storageSpace},
 		{"StorageUsagePct", usagePct},
 		{"PayType", d.PayType},
+		{"PrimaryEndpoint", d.PrimaryEndpoint},
+		{"PrimaryEndpointPublic", d.PrimaryEndpointPublic},
+		{"ClusterEndpoint", d.ClusterEndpoint},
 		{"Created", d.CreateTime},
 		{"Expires", d.ExpireTime},
 	}

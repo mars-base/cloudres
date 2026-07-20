@@ -71,6 +71,15 @@ type polarDBCluster struct {
 // results.
 const polarDBPageSize = 100
 
+// polarDBEndpoints holds the connection strings we care about from
+// DescribeDBClusterEndpoints — the cluster's primary (writer) address and
+// its default cluster (read/write-split) address, if configured.
+type polarDBEndpoints struct {
+	PrimaryEndpoint       string
+	PrimaryEndpointPublic string
+	ClusterEndpoint       string
+}
+
 func fetchPolarDBRegion(ctx context.Context, p *core.Provider, region string) ([]core.Resource, error) {
 	var allResources []core.Resource
 	now := time.Now()
@@ -95,7 +104,24 @@ func fetchPolarDBRegion(ctx context.Context, p *core.Provider, region string) ([
 		}
 
 		for _, c := range resp.Items.DBCluster {
-			rawJSON, _ := json.Marshal(c)
+			endpoints, err := fetchPolarDBEndpoints(ctx, p, c.DBClusterID)
+			if err != nil {
+				// Best-effort: don't fail the whole sync over a single
+				// cluster's endpoint lookup (e.g. transient API error).
+				endpoints = &polarDBEndpoints{}
+			}
+
+			rawJSON, _ := json.Marshal(struct {
+				polarDBCluster
+				PrimaryEndpoint       string `json:"PrimaryEndpoint"`
+				PrimaryEndpointPublic string `json:"PrimaryEndpointPublic"`
+				ClusterEndpoint       string `json:"ClusterEndpoint"`
+			}{
+				polarDBCluster:        c,
+				PrimaryEndpoint:       endpoints.PrimaryEndpoint,
+				PrimaryEndpointPublic: endpoints.PrimaryEndpointPublic,
+				ClusterEndpoint:       endpoints.ClusterEndpoint,
+			})
 			allResources = append(allResources, core.Resource{
 				Provider:     "aliyun",
 				ResourceType: "pdb",
@@ -114,4 +140,42 @@ func fetchPolarDBRegion(ctx context.Context, p *core.Provider, region string) ([
 	}
 
 	return allResources, nil
+}
+
+// fetchPolarDBEndpoints calls DescribeDBClusterEndpoints for a single
+// cluster. There's no batch/list variant of this API, so it's one extra CLI
+// call per cluster — same tradeoff as RDS's DescribeResourceUsage.
+func fetchPolarDBEndpoints(ctx context.Context, p *core.Provider, clusterID string) (*polarDBEndpoints, error) {
+	out, err := runAliyun(ctx, []string{"polardb", "DescribeDBClusterEndpoints", "--DBClusterId", clusterID}, p.ActiveProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp struct {
+		Items []struct {
+			EndpointType string `json:"EndpointType"`
+			AddressItems []struct {
+				ConnectionString string `json:"ConnectionString"`
+				NetType          string `json:"NetType"`
+			} `json:"AddressItems"`
+		} `json:"Items"`
+	}
+	if err := json.Unmarshal(out, &resp); err != nil {
+		return nil, fmt.Errorf("parse polardb endpoints response: %w", err)
+	}
+
+	var eps polarDBEndpoints
+	for _, item := range resp.Items {
+		for _, addr := range item.AddressItems {
+			switch {
+			case item.EndpointType == "Primary" && addr.NetType == "Private":
+				eps.PrimaryEndpoint = addr.ConnectionString
+			case item.EndpointType == "Primary" && addr.NetType == "Public":
+				eps.PrimaryEndpointPublic = addr.ConnectionString
+			case item.EndpointType == "Cluster" && addr.NetType == "Private":
+				eps.ClusterEndpoint = addr.ConnectionString
+			}
+		}
+	}
+	return &eps, nil
 }
