@@ -60,7 +60,7 @@ var (
 		// Label in detail view (key: value)
 	labelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#7aa2f7")).
-			Width(18)
+			Width(24)
 
 	// Value in detail view
 	valueStyle = lipgloss.NewStyle().

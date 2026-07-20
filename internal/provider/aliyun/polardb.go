@@ -80,6 +80,17 @@ type polarDBEndpoints struct {
 	ClusterEndpoint       string
 }
 
+// polarDBNode holds per-node specs extracted from DescribeDBClusterAttribute.
+// DBNodes[] in the response contains one entry per node — Writer nodes and
+// Reader nodes — each with its own CPU, memory, class, and zone.
+type polarDBNode struct {
+	DBNodeRole  string `json:"DBNodeRole"`
+	CpuCores    string `json:"CpuCores"`
+	MemorySize  string `json:"MemorySize"`
+	DBNodeClass string `json:"DBNodeClass"`
+	ZoneId      string `json:"ZoneId"`
+}
+
 func fetchPolarDBRegion(ctx context.Context, p *core.Provider, region string) ([]core.Resource, error) {
 	var allResources []core.Resource
 	now := time.Now()
@@ -111,16 +122,24 @@ func fetchPolarDBRegion(ctx context.Context, p *core.Provider, region string) ([
 				endpoints = &polarDBEndpoints{}
 			}
 
+			nodes, err := fetchPolarDBNodes(ctx, p, c.DBClusterID)
+			if err != nil {
+				// Best-effort, same as endpoints.
+				nodes = nil
+			}
+
 			rawJSON, _ := json.Marshal(struct {
 				polarDBCluster
-				PrimaryEndpoint       string `json:"PrimaryEndpoint"`
-				PrimaryEndpointPublic string `json:"PrimaryEndpointPublic"`
-				ClusterEndpoint       string `json:"ClusterEndpoint"`
+				PrimaryEndpoint       string         `json:"PrimaryEndpoint"`
+				PrimaryEndpointPublic string         `json:"PrimaryEndpointPublic"`
+				ClusterEndpoint       string         `json:"ClusterEndpoint"`
+				DBNodes               []polarDBNode  `json:"DBNodes"`
 			}{
 				polarDBCluster:        c,
 				PrimaryEndpoint:       endpoints.PrimaryEndpoint,
 				PrimaryEndpointPublic: endpoints.PrimaryEndpointPublic,
 				ClusterEndpoint:       endpoints.ClusterEndpoint,
+				DBNodes:               nodes,
 			})
 			allResources = append(allResources, core.Resource{
 				Provider:     "aliyun",
@@ -178,4 +197,23 @@ func fetchPolarDBEndpoints(ctx context.Context, p *core.Provider, clusterID stri
 		}
 	}
 	return &eps, nil
+}
+
+// fetchPolarDBNodes calls DescribeDBClusterAttribute for a single cluster to
+// extract per-node specs (role, CPU, memory, class, zone). Like
+// fetchPolarDBEndpoints, there's no batch variant — one extra CLI call per
+// cluster.
+func fetchPolarDBNodes(ctx context.Context, p *core.Provider, clusterID string) ([]polarDBNode, error) {
+	out, err := runAliyun(ctx, []string{"polardb", "DescribeDBClusterAttribute", "--DBClusterId", clusterID}, p.ActiveProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp struct {
+		DBNodes []polarDBNode `json:"DBNodes"`
+	}
+	if err := json.Unmarshal(out, &resp); err != nil {
+		return nil, fmt.Errorf("parse polardb attribute response: %w", err)
+	}
+	return resp.DBNodes, nil
 }

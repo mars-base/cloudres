@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // formatBytes renders a byte count as a human-readable size (GB, with one
@@ -303,6 +304,13 @@ func (r Resource) polarDBDetail() [][2]string {
 		PrimaryEndpoint       string `json:"PrimaryEndpoint"`
 		PrimaryEndpointPublic string `json:"PrimaryEndpointPublic"`
 		ClusterEndpoint       string `json:"ClusterEndpoint"`
+		DBNodes               []struct {
+			DBNodeRole  string `json:"DBNodeRole"`
+			CpuCores    string `json:"CpuCores"`
+			MemorySize  string `json:"MemorySize"`
+			DBNodeClass string `json:"DBNodeClass"`
+			ZoneId      string `json:"ZoneId"`
+		} `json:"DBNodes"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	storageSpace := "-"
@@ -315,7 +323,8 @@ func (r Resource) polarDBDetail() [][2]string {
 	if d.StoragePayType == "Prepaid" {
 		usagePct = formatPercent(d.StorageUsed, d.StorageSpace)
 	}
-	return [][2]string{
+
+	pairs := [][2]string{
 		{"ID", r.ResourceID},
 		{"Name", r.ResourceName},
 		{"Status", r.Status},
@@ -331,7 +340,24 @@ func (r Resource) polarDBDetail() [][2]string {
 		{"PrimaryEndpoint", d.PrimaryEndpoint},
 		{"PrimaryEndpointPublic", d.PrimaryEndpointPublic},
 		{"ClusterEndpoint", d.ClusterEndpoint},
+	}
+
+	for i, n := range d.DBNodes {
+		label := fmt.Sprintf("Node-%d", i+1)
+		// MemorySize is in MB; convert to GB for readability.
+		memGB := "-"
+		if memMB, err := strconv.ParseInt(n.MemorySize, 10, 64); err == nil && memMB > 0 {
+			memGB = fmt.Sprintf("%dGB", memMB/1024)
+		}
+		value := fmt.Sprintf("%s %sC/%s %s %s",
+			n.DBNodeRole, n.CpuCores, memGB, n.DBNodeClass, n.ZoneId)
+		pairs = append(pairs, [2]string{label, value})
+	}
+
+	pairs = append(pairs, [][2]string{
 		{"Created", d.CreateTime},
 		{"Expires", d.ExpireTime},
-	}
+	}...)
+
+	return pairs
 }
