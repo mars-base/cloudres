@@ -177,16 +177,15 @@ func (m *appModel) renderUpperPanel() string {
 		sb.WriteString("  ")
 		if m.currentResource != "" {
 			sb.WriteString(selectedStyle.Render("▸ " + m.currentResource))
+			if label := core.ResourceTypeLabel(m.currentProvider.Name, m.currentResource); label != "" {
+				sb.WriteString(dimStyle.Render(" (" + label + ")"))
+			}
 			if m.filterInput != "" && !m.filterMode {
 				sb.WriteString("  ")
 				sb.WriteString(dimStyle.Render("/" + m.filterInput))
 			}
 		} else {
-			var types []string
-			for _, f := range m.fetchers {
-				types = append(types, f.ResourceType())
-			}
-			sb.WriteString(dimStyle.Render("Press : then type (" + strings.Join(types, ", ") + ") + Enter"))
+			sb.WriteString(dimStyle.Render("Press : then type resource name + Enter"))
 		}
 		sb.WriteByte('\n')
 	}
@@ -230,7 +229,18 @@ func (m *appModel) renderLowerPanel(availableHeight int) string {
 		return m.viewCenteredBlock(availableHeight, "Select a region (press number)")
 	}
 	if m.currentResource == "" {
-		return m.viewCenteredBlock(availableHeight, "Press : then type resource name + Enter")
+		var lines []string
+		lines = append(lines, "Press : then type resource name + Enter")
+		lines = append(lines, "")
+		for _, f := range m.fetchers {
+			t := f.ResourceType()
+			line := "  " + t
+			if label := core.ResourceTypeLabel(m.currentProvider.Name, t); label != "" {
+				line += "  " + label
+			}
+			lines = append(lines, line)
+		}
+		return m.viewCenteredBlock(availableHeight, lines...)
 	}
 	if m.loading {
 		return m.viewCenteredBlock(availableHeight, "Loading "+m.currentResource+" resources...")
