@@ -2,6 +2,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/mars-base/cloudres/internal/core"
 	"github.com/mars-base/cloudres/internal/provider"
 	"github.com/mars-base/cloudres/internal/provider/aliyun"
@@ -48,4 +50,24 @@ func Execute() error {
 
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.PersistentFlags().String("profile", "", "cloud provider profile (e.g. aliyun profile name)")
+}
+
+// resolveProfile picks the active profile from the --profile flag, falling
+// back to Detect()'s ActiveProfile (the config's "current" field). Returns
+// an error if neither is set so the user gets a clear message instead of
+// silently empty credentials.
+func resolveProfile(p *core.Provider) error {
+	flagProfile, _ := rootCmd.PersistentFlags().GetString("profile")
+	if flagProfile != "" {
+		p.ActiveProfile = flagProfile
+		return nil
+	}
+	if p.ActiveProfile != "" {
+		return nil
+	}
+	return fmt.Errorf(
+		"no profile specified: set --profile or configure \"current\" in %s",
+		p.ConfigPath,
+	)
 }

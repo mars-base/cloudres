@@ -44,16 +44,16 @@ var syncCmd = &cobra.Command{
 			if found == nil {
 				return fmt.Errorf("provider %q not detected", target)
 			}
-			if found.ActiveProfile == "" && len(found.Profiles) > 0 {
-				found.ActiveProfile = found.Profiles[0]
+			if err := resolveProfile(found); err != nil {
+				return err
 			}
 			return syncProvider(ctx, db, reg, found)
 		}
 
 		// Sync all providers
 		for _, p := range providers {
-			if p.ActiveProfile == "" && len(p.Profiles) > 0 {
-				p.ActiveProfile = p.Profiles[0]
+			if err := resolveProfile(p); err != nil {
+				return err
 			}
 			if err := syncProvider(ctx, db, reg, p); err != nil {
 				fmt.Printf("Error syncing %s: %v\n", p.Name, err)

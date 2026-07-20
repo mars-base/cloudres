@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -16,10 +15,8 @@ import (
 //	cloudres aliyun ecs
 //	cloudres aliyun vpc
 func registerProviderCommands(reg *provider.Registry) {
-	ctx := context.Background()
-
 	for _, name := range reg.ProviderNames() {
-		providerName := name // capture
+		providerName := name
 		providerCmd := &cobra.Command{
 			Use:   providerName,
 			Short: fmt.Sprintf("Query %s resources", providerName),
@@ -27,13 +24,13 @@ func registerProviderCommands(reg *provider.Registry) {
 
 		fetchers := reg.FetchersFor(providerName)
 		for _, fetcher := range fetchers {
-			f := fetcher // capture
+			f := fetcher
 			rtype := f.ResourceType()
 			resourceCmd := &cobra.Command{
 				Use:   rtype,
 				Short: fmt.Sprintf("List %s %s resources", providerName, rtype),
 				RunE: func(cmd *cobra.Command, args []string) error {
-					return runResourceCommand(cmd.Context(), reg, providerName, f)
+					return runResourceCommand(cmd, reg, providerName, f)
 				},
 			}
 			resourceCmd.Flags().String("region", "", "filter by region")
@@ -41,38 +38,36 @@ func registerProviderCommands(reg *provider.Registry) {
 			providerCmd.AddCommand(resourceCmd)
 		}
 
-		_ = ctx
 		rootCmd.AddCommand(providerCmd)
 	}
 }
 
-func runResourceCommand(ctx context.Context, reg *provider.Registry, providerName string, fetcher core.ResourceFetcher) error {
+func runResourceCommand(cmd *cobra.Command, reg *provider.Registry, providerName string, fetcher core.ResourceFetcher) error {
 	db, err := core.Open()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	p, err := reg.Get(ctx, providerName)
+	p, err := reg.Get(cmd.Context(), providerName)
 	if err != nil {
 		return err
 	}
 
-	// Pick first profile as the active one for CLI mode, so cached
-	// results are scoped per-profile (matching TUI behavior) and
-	// resources queried against the correct credentials.
-	if p.ActiveProfile == "" && len(p.Profiles) > 0 {
-		p.ActiveProfile = p.Profiles[0]
+	if err := resolveProfile(p); err != nil {
+		return err
 	}
 
-	// Save detected provider
 	db.UpsertProvider(*p)
 
+	forceSync, _ := cmd.Flags().GetBool("sync")
+	region, _ := cmd.Flags().GetString("region")
+
 	var resources []core.Resource
-	if forceSync, _ := rootCmd.Flags().GetBool("sync"); forceSync {
-		resources, err = core.SyncAndList(ctx, db, p, fetcher, "")
+	if forceSync {
+		resources, err = core.SyncAndList(cmd.Context(), db, p, fetcher, region)
 	} else {
-		resources, err = core.Sync(ctx, db, p, fetcher, "")
+		resources, err = core.Sync(cmd.Context(), db, p, fetcher, region)
 	}
 	if err != nil {
 		return err
