@@ -156,9 +156,6 @@ func (m *appModel) executeCommand(cmd string) tea.Cmd {
 			if len(p.Profiles) > 0 {
 				profile = p.Profiles[0]
 				regions = p.ProfileRegions[profile]
-				if len(regions) == 0 {
-					regions = p.Regions
-				}
 			}
 			m.selectProvider(p, profile, regions)
 			return nil

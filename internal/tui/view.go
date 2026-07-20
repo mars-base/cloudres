@@ -45,11 +45,10 @@ func (m *appModel) viewProviderSelect() string {
 	if len(m.profileEntries) == 0 {
 		body = m.viewEmptyMsg("No providers detected. Run 'cloudres list' to check.")
 	} else {
-		columns := []string{"", "Provider", "Profile", "Regions"}
+		columns := []string{"Provider", "Profile", "Regions"}
 		rows := make([][]string, len(m.profileEntries))
 		for i, entry := range m.profileEntries {
 			rows[i] = []string{
-				string(rune('a' + i)),
 				entry.provider.Name,
 				entry.profile,
 				strings.Join(entry.regions, ", "),
@@ -87,8 +86,10 @@ func (m *appModel) fitToHeight(parts ...string) string {
 	if len(allLines) < m.height {
 		// Pad before footer
 		bodyEnd := max(0, len(allLines)-footerLineCount)
+		// Copy footerLines out first: appending to body below may reuse
+		// allLines' backing array and clobber the footer in place otherwise.
+		footerLines := append([]string(nil), allLines[bodyEnd:]...)
 		body := allLines[:bodyEnd]
-		footerLines := allLines[bodyEnd:]
 
 		needed := m.height - len(body) - len(footerLines)
 		for range needed {
@@ -98,8 +99,8 @@ func (m *appModel) fitToHeight(parts ...string) string {
 	} else if len(allLines) > m.height {
 		// Truncate body, keep footer
 		bodyEnd := max(0, len(allLines)-footerLineCount)
+		footerLines := append([]string(nil), allLines[bodyEnd:]...)
 		body := allLines[:bodyEnd]
-		footerLines := allLines[bodyEnd:]
 
 		maxBody := max(0, m.height-len(footerLines))
 		if len(body) > maxBody {
@@ -199,6 +200,10 @@ func (m *appModel) renderUpperPanel() string {
 // ── Lower Panel ────────────────────────────────────────────────
 
 func (m *appModel) renderLowerPanel() string {
+	if len(m.currentRegions) == 0 {
+		return m.viewEmptyMsg(errorStyle.Render("No region configured for this profile.")) +
+			m.viewEmptyMsg("Set 'region_id' in " + m.currentProvider.ConfigPath + " for profile '" + m.currentProfile + "', then reopen the TUI.")
+	}
 	if m.currentRegion == "" {
 		return m.viewEmptyMsg("Select a region (press number)")
 	}

@@ -60,11 +60,6 @@ func (d *Detector) Detect(ctx context.Context) (*core.Provider, error) {
 		regions = append(regions, r)
 	}
 
-	// Use default regions if config has none
-	if len(regions) == 0 {
-		regions = defaultRegions()
-	}
-
 	return &core.Provider{
 		Name:           "aliyun",
 		CLIPath:        cliPath,
@@ -110,43 +105,8 @@ func parseAliyunConfig(path string) (profiles []string, profileRegions map[strin
 		if p.RegionID != "" {
 			regions = append(regions, p.RegionID)
 		}
-		if len(regions) == 0 {
-			regions = defaultRegions()
-		}
 		profileRegions[p.Name] = regions
 	}
 
 	return profiles, profileRegions, nil
-}
-
-// defaultRegions returns common Aliyun regions when config has none
-func defaultRegions() []string {
-	return []string{
-		"cn-qingdao",
-		"cn-beijing",
-		"cn-zhangjiakou",
-		"cn-huhehaote",
-		"cn-wulanchabu",
-		"cn-hangzhou",
-		"cn-shanghai",
-		"cn-nanjing",
-		"cn-fuzhou",
-		"cn-shenzhen",
-		"cn-heyuan",
-		"cn-guangzhou",
-		"cn-chengdu",
-		"cn-hongkong",
-		"ap-northeast-1",
-		"ap-southeast-1",
-		"ap-southeast-3",
-		"ap-southeast-5",
-		"ap-southeast-6",
-		"ap-southeast-7",
-		"ap-south-1",
-		"us-east-1",
-		"us-west-1",
-		"eu-west-1",
-		"eu-central-1",
-		"me-east-1",
-	}
 }

@@ -43,11 +43,7 @@ func (m *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.profileEntries = append(m.profileEntries, providerEntry{provider: p, profile: "", regions: p.Regions})
 			} else {
 				for _, prof := range p.Profiles {
-					regions := p.ProfileRegions[prof]
-					if len(regions) == 0 {
-						regions = p.Regions
-					}
-					m.profileEntries = append(m.profileEntries, providerEntry{provider: p, profile: prof, regions: regions})
+					m.profileEntries = append(m.profileEntries, providerEntry{provider: p, profile: prof, regions: p.ProfileRegions[prof]})
 				}
 			}
 		}
