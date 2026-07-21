@@ -19,6 +19,7 @@ var resourceTypeLabels = map[string]map[string]string{
 		"alb":  "Application Load Balancer",
 		"nlb":  "Network Load Balancer",
 		"ess":  "Auto Scaling (ESS)",
+		"ram":  "RAM User",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",

@@ -72,6 +72,8 @@ func Columns(provider, resourceType string) []string {
 		return []string{"ID", "Name", "Status", "Type", "DNS"}
 	case "ess":
 		return []string{"ID", "Name", "Status", "Active/Max", "GroupType"}
+	case "ram":
+		return []string{"ID", "Name", "DisplayName", "Created"}
 	default:
 		return []string{"ID", "Name", "Status", "Region"}
 	}
@@ -105,6 +107,8 @@ func (r Resource) Detail() [][2]string {
 		return r.nlbDetail()
 	case "ess":
 		return r.essDetail()
+	case "ram":
+		return r.ramDetail()
 	default:
 		return [][2]string{
 			{"ID", r.ResourceID},
@@ -143,6 +147,8 @@ func (r Resource) Row() []string {
 		return r.nlbRow()
 	case "ess":
 		return r.essRow()
+	case "ram":
+		return r.ramRow()
 	default:
 		return []string{r.ResourceID, r.ResourceName, r.Status, r.Region}
 	}

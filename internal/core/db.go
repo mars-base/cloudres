@@ -162,7 +162,7 @@ func (d *DB) ListResources(provider, profile, resourceType, region string) ([]Re
 	args := []interface{}{provider, profile, resourceType}
 
 	if region != "" {
-		query += " AND region = ?"
+		query += " AND (region = ? OR region = '')"
 		args = append(args, region)
 	}
 	query += " ORDER BY resource_name"

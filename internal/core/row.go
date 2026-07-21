@@ -533,3 +533,35 @@ func (r Resource) essDetail() [][2]string {
 		{"Created", d.CreationTime},
 	}
 }
+
+func (r Resource) ramRow() []string {
+	var d struct {
+		DisplayName string `json:"DisplayName"`
+		CreateDate  string `json:"CreateDate"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	display := d.DisplayName
+	if display == "" {
+		display = "-"
+	}
+	return []string{r.ResourceID, r.ResourceName, display, d.CreateDate}
+}
+
+func (r Resource) ramDetail() [][2]string {
+	var d struct {
+		UserName    string `json:"UserName"`
+		DisplayName string `json:"DisplayName"`
+		Comments    string `json:"Comments"`
+		CreateDate  string `json:"CreateDate"`
+		UpdateDate  string `json:"UpdateDate"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"UserID", r.ResourceID},
+		{"UserName", d.UserName},
+		{"DisplayName", d.DisplayName},
+		{"Comments", d.Comments},
+		{"Created", d.CreateDate},
+		{"Updated", d.UpdateDate},
+	}
+}
