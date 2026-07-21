@@ -35,6 +35,10 @@ an interactive terminal UI for browsing resources across regions.
 | `tair` | Tair (Redis-compatible) | Type, edition, version, memory usage, quota |
 | `pdb` | PolarDB | Engine, node specs (per-node role/CPU/memory), endpoints, storage |
 | `oss` | Object Storage Service | Storage class |
+| `slb` | Server Load Balancer (CLB) | Address type, IP, network type, bandwidth, VPC, zone |
+| `alb` | Application Load Balancer | Address type, edition, DNS, VPC |
+| `nlb` | Network Load Balancer | Address type, DNS, VPC |
+| `ess` | Auto Scaling (ESS) | Group type, active/max/min capacity |
 
 ### Resource Types (Huawei Cloud)
 
