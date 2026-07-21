@@ -54,31 +54,15 @@ an interactive terminal UI for browsing resources across regions.
 
 ## Prerequisites
 
-- [Go](https://go.dev/) 1.25+ (build from source)
 - Provider-specific CLI tools (e.g. `aliyun` CLI for Alibaba Cloud, `hcloud` CLI for Huawei Cloud)
 - A valid provider config (e.g. `~/.aliyun/config.json`, `~/.hcloud/config.json`)
 
 ## Installation
 
-### Build from source
-
-```bash
-git clone https://github.com/mars-base/cloudres.git
-cd cloudres
-make build
-./build/cloudres
-```
-
 ### Install from GitHub releases (Linux / macOS)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/install.sh | bash
-```
-
-Install a specific version:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/install.sh | bash -s v1.0.0
 ```
 
 Custom install directory:
@@ -93,27 +77,8 @@ curl -fsSL https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/ins
 Invoke-WebRequest -Uri https://raw.githubusercontent.com/mars-base/cloudres/main/scripts/install.ps1 -OutFile install.ps1
 .\install.ps1
 
-# Specific version
-.\install.ps1 -Tag v1.0.0
-
 # Custom directory
 .\install.ps1 -InstallDir C:\tools
-```
-
-### Install via `go install`
-
-```bash
-go install github.com/mars-base/cloudres/cmd/cloudres@latest
-```
-
-### Pre-built binaries
-
-```bash
-make release
-# Output in build/:
-#   cloudres-linux-amd64   cloudres-linux-arm64
-#   cloudres-darwin-amd64  cloudres-darwin-arm64
-#   cloudres-windows-amd64.exe
 ```
 
 ## CLI Usage
