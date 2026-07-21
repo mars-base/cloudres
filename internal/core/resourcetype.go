@@ -16,6 +16,15 @@ var resourceTypeLabels = map[string]map[string]string{
 		"pdb":  "PolarDB",
 		"oss":  "Object Storage Service",
 	},
+	"huawei": {
+		"ecs":    "弹性云服务器 (ECS)",
+		"vpc":    "虚拟私有云 (VPC)",
+		"subnet": "子网 (Subnet)",
+		"rds":    "云数据库 (RDS)",
+		"dcs":    "分布式缓存服务 (DCS/Redis)",
+		"evs":    "云硬盘 (EVS)",
+		"eip":    "弹性公网IP (EIP)",
+	},
 }
 
 // ResourceTypeLabel returns the human-readable label for a provider's

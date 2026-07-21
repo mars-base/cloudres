@@ -32,7 +32,23 @@ type Resource struct {
 }
 
 // Columns returns the compact display column headers for a resource type (table view).
-func Columns(resourceType string) []string {
+func Columns(provider, resourceType string) []string {
+	switch {
+	case provider == "huawei" && resourceType == "ecs":
+		return []string{"ID", "Name", "Status", "Flavor", "IP"}
+	case provider == "huawei" && resourceType == "vpc":
+		return []string{"ID", "Name", "CIDR", "Status"}
+	case provider == "huawei" && resourceType == "subnet":
+		return []string{"ID", "Name", "CIDR", "VPC", "Status"}
+	case provider == "huawei" && resourceType == "rds":
+		return []string{"ID", "Name", "Status", "Engine", "Type", "Flavor"}
+	case provider == "huawei" && resourceType == "dcs":
+		return []string{"ID", "Name", "Status", "Engine", "Capacity", "IP"}
+	case provider == "huawei" && resourceType == "evs":
+		return []string{"ID", "Name", "Status", "Size(GB)", "Type", "Attached"}
+	case provider == "huawei" && resourceType == "eip":
+		return []string{"IP", "Status", "Type", "Bandwidth", "Instance"}
+	}
 	switch resourceType {
 	case "ecs":
 		return []string{"ID", "Name", "Status", "Type", "IP"}
@@ -55,6 +71,9 @@ func Columns(resourceType string) []string {
 
 // Detail returns key-value pairs for the detail view of a resource.
 func (r Resource) Detail() [][2]string {
+	if r.Provider == "huawei" {
+		return r.huaweiDetail()
+	}
 	switch r.ResourceType {
 	case "ecs":
 		return r.ecsDetail()
@@ -82,6 +101,9 @@ func (r Resource) Detail() [][2]string {
 
 // Row extracts display columns from a Resource as strings.
 func (r Resource) Row() []string {
+	if r.Provider == "huawei" {
+		return r.huaweiRow()
+	}
 	switch r.ResourceType {
 	case "ecs":
 		return r.ecsRow()

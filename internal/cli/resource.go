@@ -79,7 +79,7 @@ func runResourceCommand(cmd *cobra.Command, reg *provider.Registry, providerName
 	}
 
 	// Render table
-	columns := core.Columns(fetcher.ResourceType())
+	columns := core.Columns(providerName, fetcher.ResourceType())
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
 	// Header

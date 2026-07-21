@@ -7,6 +7,7 @@ import (
 	"github.com/mars-base/cloudres/internal/core"
 	"github.com/mars-base/cloudres/internal/provider"
 	"github.com/mars-base/cloudres/internal/provider/aliyun"
+	"github.com/mars-base/cloudres/internal/provider/huawei"
 	"github.com/mars-base/cloudres/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -37,6 +38,7 @@ Run without arguments to enter the interactive TUI mode.`,
 func newRegistry() *provider.Registry {
 	reg := provider.NewRegistry()
 	reg.Register(aliyun.NewDetector())
+	reg.Register(huawei.NewDetector())
 	return reg
 }
 

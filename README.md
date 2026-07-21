@@ -2,7 +2,7 @@
 
 Cloud resource query and display tool with a TUI.
 
-`cloudres` queries cloud provider CLIs (Aliyun, AWS, etc.) and caches resources
+`cloudres` queries cloud provider CLIs (Aliyun, Huawei Cloud, etc.) and caches resources
 in a local SQLite database. It provides both a CLI interface for scripting and
 an interactive terminal UI for browsing resources across regions.
 
@@ -22,6 +22,7 @@ an interactive terminal UI for browsing resources across regions.
 | Provider | Detection | Status |
 |----------|-----------|--------|
 | [Aliyun (阿里云)](https://www.aliyun.com/) | `aliyun` CLI + `~/.aliyun/config.json` | ✅ Implemented |
+| [Huawei Cloud (华为云)](https://www.huaweicloud.com/) | `hcloud` CLI + `~/.hcloud/config.json` | ✅ Implemented |
 
 ### Resource Types (Aliyun)
 
@@ -35,11 +36,23 @@ an interactive terminal UI for browsing resources across regions.
 | `pdb` | PolarDB | Engine, node specs (per-node role/CPU/memory), endpoints, storage |
 | `oss` | Object Storage Service | Storage class |
 
+### Resource Types (Huawei Cloud)
+
+| Code | Resource | Detail Fields |
+|------|----------|---------------|
+| `ecs` | 弹性云服务器 (ECS) | vCPUs, RAM, OS, private/public IP, VPC, zone, flavor |
+| `vpc` | 虚拟私有云 (VPC) | CIDR, description, created/updated time |
+| `subnet` | 子网 (Subnet) | CIDR, VPC, gateway, zone, DHCP |
+| `rds` | 云数据库 (RDS) | Engine, type, flavor, CPU, memory, volume, private/public IP, nodes |
+| `dcs` | 分布式缓存服务 (DCS/Redis) | Engine, capacity, max/used memory, IP, port, VPC, zone |
+| `evs` | 云硬盘 (EVS) | Size, type, bootable, encrypted, attachments |
+| `eip` | 弹性公网IP (EIP) | Public IP, type, bandwidth, private IP, bound instance |
+
 ## Prerequisites
 
 - [Go](https://go.dev/) 1.25+ (build from source)
-- Provider-specific CLI tools (e.g. `aliyun` CLI for Alibaba Cloud)
-- A valid provider config (e.g. `~/.aliyun/config.json` with profiles)
+- Provider-specific CLI tools (e.g. `aliyun` CLI for Alibaba Cloud, `hcloud` CLI for Huawei Cloud)
+- A valid provider config (e.g. `~/.aliyun/config.json`, `~/.hcloud/config.json`)
 
 ## Installation
 
@@ -116,9 +129,10 @@ cloudres list
 Output:
 
 ```
-  Provider  Profile  Regions
-  ─────────────────────────────────────
-  aliyun    default  cn-hangzhou, cn-shanghai
+  Provider  Profile         Regions
+  ──────────────────────────────────────────
+  aliyun    default         cn-hangzhou, cn-shanghai
+  huawei    default          cn-east-3
 ```
 
 ### Query resources from CLI
@@ -135,6 +149,11 @@ cloudres aliyun ecs --region cn-hangzhou
 
 # Force re-sync before listing
 cloudres aliyun pdb --sync
+
+# Huawei Cloud
+cloudres huawei ecs --sync
+cloudres huawei eip
+cloudres huawei dcs --profile myproject --sync
 ```
 
 ### Show version
@@ -160,7 +179,7 @@ cloudres version
 |-----|--------|
 | `↑` / `↓` / `j` / `k` | Navigate resources |
 | `1` – `9` | Select region by index |
-| `:` | Command mode — type a resource type (e.g. `ecs`) or region |
+| `:` | Command mode — type a resource type (e.g. `ecs`, `subnet`) |
 | `/` | Filter resources (case-insensitive substring search across all columns) |
 | `d` | View resource detail |
 | `Esc` | Go back (clear filter → clear resource type → provider select) |
@@ -175,30 +194,13 @@ cloudres version
 
 ### Command Mode
 
-Press `:` to enter, then type:
+Press `:` to enter command mode, then type a resource type name to load and display it:
 
 | Input | Example | Action |
 |-------|---------|--------|
-| `<provider>` | `aliyun` | Select provider |
-| `<provider>(<profile>)` | `aliyun(default)` | Select provider + profile |
-| `<region>` | `cn-hangzhou` | Select region |
-| `<resource-type>` | `ecs` | Select resource type and fetch |
-
-## Development
-
-```bash
-# Build
-make build
-
-# Run tests
-make test
-
-# Lint (requires golangci-lint)
-make lint
-
-# Cross-compile release binaries
-make release
-```
+| `<resource-type>` | `ecs` | Load ECS resources |
+| `<resource-type>` | `subnet` | Load Subnet resources, hint shows `子网 (Subnet)` |
+| `<resource-type>` | `dcs` | Load DCS (Redis) resources |
 
 ## License
 

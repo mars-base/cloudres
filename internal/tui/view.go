@@ -259,7 +259,7 @@ func (m *appModel) renderLowerPanel(availableHeight int) string {
 		return m.viewCenteredBlock(availableHeight, "No resources match filter \""+m.filterInput+"\".")
 	}
 
-	columns := core.Columns(m.currentResource)
+	columns := core.Columns(m.currentProvider.Name, m.currentResource)
 	rows := make([][]string, len(resources))
 	for i, r := range resources {
 		rows[i] = r.Row()
