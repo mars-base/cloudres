@@ -2,9 +2,9 @@ package cli
 
 import (
 	"fmt"
-	"os"
-	"text/tabwriter"
+	"strings"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/mars-base/cloudres/internal/core"
 	"github.com/mars-base/cloudres/internal/provider"
 	"github.com/spf13/cobra"
@@ -78,39 +78,77 @@ func runResourceCommand(cmd *cobra.Command, reg *provider.Registry, providerName
 		return nil
 	}
 
-	// Render table
+	// Render table with proper CJK alignment
 	columns := core.Columns(providerName, fetcher.ResourceType())
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 
-	// Header
+	// Collect all rows including header
+	allRows := make([][]string, 0, len(resources)+1)
+	allRows = append(allRows, columns)
+	for _, r := range resources {
+		allRows = append(allRows, r.Row())
+	}
+
+	// Calculate display widths
+	ncols := len(columns)
+	widths := make([]int, ncols)
+	for _, row := range allRows {
+		for i, v := range row {
+			if i >= ncols {
+				break
+			}
+			if w := runewidth.StringWidth(v); w > widths[i] {
+				widths[i] = w
+			}
+		}
+	}
+	for i := range widths {
+		if widths[i] > 40 {
+			widths[i] = 40
+		}
+	}
+
+	// Print header
 	for i, col := range columns {
 		if i > 0 {
-			fmt.Fprint(w, "\t")
+			fmt.Print("  ")
 		}
-		fmt.Fprint(w, col)
+		fmt.Print(padRight(cliTruncate(col, widths[i]), widths[i]))
 	}
-	fmt.Fprintln(w)
+	fmt.Println()
 
-	// Rows
+	// Print rows
 	for _, r := range resources {
 		row := r.Row()
 		for i, val := range row {
 			if i > 0 {
-				fmt.Fprint(w, "\t")
+				fmt.Print("  ")
 			}
-			fmt.Fprint(w, truncate(val, 40))
+			if i >= ncols {
+				break
+			}
+			fmt.Print(padRight(cliTruncate(val, widths[i]), widths[i]))
 		}
-		fmt.Fprintln(w)
+		fmt.Println()
 	}
-	w.Flush()
 
 	fmt.Printf("\n%d resources\n", len(resources))
 	return nil
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+func cliTruncate(s string, max int) string {
+	if runewidth.StringWidth(s) <= max {
 		return s
 	}
-	return s[:max-3] + "..."
+	if max <= 3 {
+		return runewidth.Truncate(s, max, "")
+	}
+	return runewidth.Truncate(s, max-3, "") + "..."
+}
+
+func padRight(s string, width int) string {
+	w := runewidth.StringWidth(s)
+	if w >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-w)
 }
