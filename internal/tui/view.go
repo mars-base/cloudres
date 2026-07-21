@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 	"github.com/mars-base/cloudres/internal/core"
 )
 
@@ -397,12 +398,14 @@ func (m *appModel) viewFooter() string {
 func (m *appModel) renderTable(columns []string, rows [][]string, availableHeight int) string {
 	widths := make([]int, len(columns))
 	for i, c := range columns {
-		widths[i] = len(c)
+		widths[i] = runewidth.StringWidth(c)
 	}
 	for _, row := range rows {
 		for i, v := range row {
-			if i < len(widths) && len(v) > widths[i] {
-				widths[i] = len(v)
+			if i < len(widths) {
+				if w := runewidth.StringWidth(v); w > widths[i] {
+					widths[i] = w
+				}
 			}
 		}
 	}
@@ -564,20 +567,24 @@ func (m *appModel) viewCenteredBlock(availableHeight int, lines ...string) strin
 // ── Utilities ──────────────────────────────────────────────────
 
 func padRight(s string, width int) string {
+	w := runewidth.StringWidth(s)
+	if w >= width {
+		return s
+	}
 	var sb strings.Builder
 	sb.WriteString(s)
-	for sb.Len() < width {
+	for i := 0; i < width-w; i++ {
 		sb.WriteByte(' ')
 	}
 	return sb.String()
 }
 
 func truncateStr(s string, w int) string {
-	if len(s) <= w {
+	if runewidth.StringWidth(s) <= w {
 		return s
 	}
 	if w <= 3 {
-		return s[:w]
+		return runewidth.Truncate(s, w, "")
 	}
-	return s[:w-3] + "..."
+	return runewidth.Truncate(s, w-3, "") + "..."
 }
