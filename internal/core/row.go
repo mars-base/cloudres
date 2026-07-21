@@ -112,6 +112,44 @@ func (r Resource) ossRow() []string {
 	return []string{r.ResourceName, r.Region, d.StorageClass}
 }
 
+func (r Resource) slbRow() []string {
+	var d struct {
+		AddressType string `json:"AddressType"`
+		Address     string `json:"Address"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.AddressType, d.Address}
+}
+
+func (r Resource) albRow() []string {
+	var d struct {
+		LoadBalancerEdition string `json:"LoadBalancerEdition"`
+		DNSName             string `json:"DNSName"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.LoadBalancerEdition, d.DNSName}
+}
+
+func (r Resource) nlbRow() []string {
+	var d struct {
+		LoadBalancerType string `json:"LoadBalancerType"`
+		DNSName          string `json:"DNSName"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.LoadBalancerType, d.DNSName}
+}
+
+func (r Resource) essRow() []string {
+	var d struct {
+		ActiveCapacity int    `json:"ActiveCapacity"`
+		MaxSize        int    `json:"MaxSize"`
+		GroupType      string `json:"GroupType"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	capacity := fmt.Sprintf("%d/%d", d.ActiveCapacity, d.MaxSize)
+	return []string{r.ResourceID, r.ResourceName, r.Status, capacity, d.GroupType}
+}
+
 func (r Resource) ecsDetail() [][2]string {
 	var d struct {
 		InstanceType  string `json:"InstanceType"`
@@ -393,4 +431,105 @@ func (r Resource) polarDBDetail() [][2]string {
 	}...)
 
 	return pairs
+}
+
+func (r Resource) slbDetail() [][2]string {
+	var d struct {
+		AddressType      string `json:"AddressType"`
+		Address          string `json:"Address"`
+		NetworkType      string `json:"NetworkType"`
+		LoadBalancerSpec string `json:"LoadBalancerSpec"`
+		Bandwidth        int    `json:"Bandwidth"`
+		VpcId            string `json:"VpcId"`
+		VSwitchId        string `json:"VSwitchId"`
+		MasterZoneId     string `json:"MasterZoneId"`
+		SlaveZoneId      string `json:"SlaveZoneId"`
+		CreateTime       string `json:"CreateTime"`
+		PayType          string `json:"PayType"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", r.Region},
+		{"AddressType", d.AddressType},
+		{"Address", d.Address},
+		{"NetworkType", d.NetworkType},
+		{"Spec", d.LoadBalancerSpec},
+		{"Bandwidth(Mbps)", fmt.Sprintf("%d", d.Bandwidth)},
+		{"VPC", d.VpcId},
+		{"VSwitch", d.VSwitchId},
+		{"MasterZone", d.MasterZoneId},
+		{"SlaveZone", d.SlaveZoneId},
+		{"PayType", d.PayType},
+		{"Created", d.CreateTime},
+	}
+}
+
+func (r Resource) albDetail() [][2]string {
+	var d struct {
+		DNSName             string `json:"DNSName"`
+		AddressType         string `json:"AddressType"`
+		LoadBalancerEdition string `json:"LoadBalancerEdition"`
+		VpcId               string `json:"VpcId"`
+		CreateTime          string `json:"CreateTime"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", r.Region},
+		{"AddressType", d.AddressType},
+		{"Edition", d.LoadBalancerEdition},
+		{"DNS", d.DNSName},
+		{"VPC", d.VpcId},
+		{"Created", d.CreateTime},
+	}
+}
+
+func (r Resource) nlbDetail() [][2]string {
+	var d struct {
+		DNSName          string `json:"DNSName"`
+		AddressType      string `json:"AddressType"`
+		LoadBalancerType string `json:"LoadBalancerType"`
+		VpcId            string `json:"VpcId"`
+		RegionId         string `json:"RegionId"`
+		CreateTime       string `json:"CreateTime"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", d.RegionId},
+		{"AddressType", d.AddressType},
+		{"Type", d.LoadBalancerType},
+		{"DNS", d.DNSName},
+		{"VPC", d.VpcId},
+		{"Created", d.CreateTime},
+	}
+}
+
+func (r Resource) essDetail() [][2]string {
+	var d struct {
+		ActiveCapacity int    `json:"ActiveCapacity"`
+		MaxSize        int    `json:"MaxSize"`
+		MinSize        int    `json:"MinSize"`
+		GroupType      string `json:"GroupType"`
+		CreationTime   string `json:"CreationTime"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", r.Region},
+		{"GroupType", d.GroupType},
+		{"ActiveCapacity", fmt.Sprintf("%d", d.ActiveCapacity)},
+		{"MinSize", fmt.Sprintf("%d", d.MinSize)},
+		{"MaxSize", fmt.Sprintf("%d", d.MaxSize)},
+		{"Created", d.CreationTime},
+	}
 }

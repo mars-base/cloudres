@@ -15,6 +15,10 @@ var resourceTypeLabels = map[string]map[string]string{
 		"tair": "Tair (Redis-compatible)",
 		"pdb":  "PolarDB",
 		"oss":  "Object Storage Service",
+		"slb":  "Server Load Balancer (CLB)",
+		"alb":  "Application Load Balancer",
+		"nlb":  "Network Load Balancer",
+		"ess":  "Auto Scaling (ESS)",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",

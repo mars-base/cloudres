@@ -64,6 +64,14 @@ func Columns(provider, resourceType string) []string {
 		return []string{"ID", "Name", "Status", "Engine", "Usage"}
 	case "oss":
 		return []string{"Bucket", "Region", "Class"}
+	case "slb":
+		return []string{"ID", "Name", "Status", "AddressType", "Address"}
+	case "alb":
+		return []string{"ID", "Name", "Status", "Edition", "DNS"}
+	case "nlb":
+		return []string{"ID", "Name", "Status", "Type", "DNS"}
+	case "ess":
+		return []string{"ID", "Name", "Status", "Active/Max", "GroupType"}
 	default:
 		return []string{"ID", "Name", "Status", "Region"}
 	}
@@ -89,6 +97,14 @@ func (r Resource) Detail() [][2]string {
 		return r.polarDBDetail()
 	case "oss":
 		return r.ossDetail()
+	case "slb":
+		return r.slbDetail()
+	case "alb":
+		return r.albDetail()
+	case "nlb":
+		return r.nlbDetail()
+	case "ess":
+		return r.essDetail()
 	default:
 		return [][2]string{
 			{"ID", r.ResourceID},
@@ -119,6 +135,14 @@ func (r Resource) Row() []string {
 		return r.polarDBRow()
 	case "oss":
 		return r.ossRow()
+	case "slb":
+		return r.slbRow()
+	case "alb":
+		return r.albRow()
+	case "nlb":
+		return r.nlbRow()
+	case "ess":
+		return r.essRow()
 	default:
 		return []string{r.ResourceID, r.ResourceName, r.Status, r.Region}
 	}
