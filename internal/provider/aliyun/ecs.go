@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/mars-base/cloudres/internal/core"
@@ -47,17 +48,18 @@ type ecsResponse struct {
 }
 
 type ecsInstance struct {
-	InstanceID   string `json:"InstanceId"`
-	InstanceName string `json:"InstanceName"`
-	Status       string `json:"Status"`
-	RegionID     string `json:"RegionId"`
-	ZoneID       string `json:"ZoneId"`
-	InstanceType string `json:"InstanceType"`
-	CPU          int    `json:"Cpu"`
-	Memory       int    `json:"Memory"`
-	CreationTime string `json:"CreationTime"`
-	ExpiredTime  string `json:"ExpiredTime"`
-	PublicIPAddr struct {
+	InstanceID        string `json:"InstanceId"`
+	InstanceName      string `json:"InstanceName"`
+	Status            string `json:"Status"`
+	RegionID          string `json:"RegionId"`
+	ZoneID            string `json:"ZoneId"`
+	InstanceType      string `json:"InstanceType"`
+	CPU               int    `json:"Cpu"`
+	Memory            int    `json:"Memory"`
+	CreationTime      string `json:"CreationTime"`
+	ExpiredTime       string `json:"ExpiredTime"`
+	InstanceChargeType string `json:"InstanceChargeType"`
+	PublicIPAddr      struct {
 		IPAddress []string `json:"IpAddress"`
 	} `json:"PublicIpAddress"`
 	InnerIPAddr struct {
@@ -71,6 +73,21 @@ type ecsInstance struct {
 		VSwitchID string `json:"VSwitchId"`
 		VPCID     string `json:"VpcId"`
 	} `json:"VpcAttributes"`
+}
+
+// ecsAutoRenewResponse mirrors the DescribeInstanceAutoRenewAttribute API response.
+type ecsAutoRenewResponse struct {
+	InstanceRenewAttributes struct {
+		InstanceRenewAttribute []ecsAutoRenewAttr `json:"InstanceRenewAttribute"`
+	} `json:"InstanceRenewAttributes"`
+}
+
+type ecsAutoRenewAttr struct {
+	InstanceID       string `json:"InstanceId"`
+	AutoRenewEnabled bool   `json:"AutoRenewEnabled"`
+	RenewalStatus    string `json:"RenewalStatus"`
+	Duration         int    `json:"Duration"`
+	PeriodUnit       string `json:"PeriodUnit"`
 }
 
 // ecsPageSize is the page size requested per DescribeInstances call.
@@ -101,8 +118,41 @@ func fetchECSRegion(ctx context.Context, p *core.Provider, region string) ([]cor
 			return nil, fmt.Errorf("parse ecs response: %w", err)
 		}
 
+		// 收集本页所有包年包月实例的 ID，批量查询自动续费属性
+		var prepaidIDs []string
 		for _, inst := range resp.Instances.Instance {
-			rawJSON, _ := json.Marshal(inst)
+			if inst.InstanceChargeType == "PrePaid" {
+				prepaidIDs = append(prepaidIDs, inst.InstanceID)
+			}
+		}
+
+		renewMap := make(map[string]ecsAutoRenewAttr)
+		if len(prepaidIDs) > 0 {
+			renewAttrs, err := fetchECSAutoRenewBatch(ctx, p, region, prepaidIDs)
+			if err != nil {
+				// best-effort: 自动续费查询失败不影响主流程
+				renewAttrs = nil
+			}
+			for _, attr := range renewAttrs {
+				renewMap[attr.InstanceID] = attr
+			}
+		}
+
+		for _, inst := range resp.Instances.Instance {
+			renewAttr := renewMap[inst.InstanceID]
+			rawJSON, _ := json.Marshal(struct {
+				ecsInstance
+				AutoRenewEnabled bool   `json:"AutoRenewEnabled"`
+				RenewalStatus    string `json:"RenewalStatus"`
+				Duration         int    `json:"Duration"`
+				PeriodUnit       string `json:"PeriodUnit"`
+			}{
+				ecsInstance:      inst,
+				AutoRenewEnabled: renewAttr.AutoRenewEnabled,
+				RenewalStatus:    renewAttr.RenewalStatus,
+				Duration:         renewAttr.Duration,
+				PeriodUnit:       renewAttr.PeriodUnit,
+			})
 			allResources = append(allResources, core.Resource{
 				Provider:     "aliyun",
 				ResourceType: "ecs",
@@ -124,6 +174,29 @@ func fetchECSRegion(ctx context.Context, p *core.Provider, region string) ([]cor
 	}
 
 	return allResources, nil
+}
+
+// fetchECSAutoRenewBatch queries auto-renewal attributes for a batch of instance IDs.
+// The API supports up to 100 instance IDs per request via comma-separated InstanceId parameter.
+func fetchECSAutoRenewBatch(ctx context.Context, p *core.Provider, region string, instanceIDs []string) ([]ecsAutoRenewAttr, error) {
+	args := []string{"ecs", "DescribeInstanceAutoRenewAttribute",
+		"--InstanceId", strings.Join(instanceIDs, ","),
+	}
+	if region != "" {
+		args = append(args, "--RegionId", region)
+	}
+
+	out, err := runAliyun(ctx, args, p.ActiveProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ecsAutoRenewResponse
+	if err := json.Unmarshal(out, &resp); err != nil {
+		return nil, fmt.Errorf("parse ecs auto-renew response: %w", err)
+	}
+
+	return resp.InstanceRenewAttributes.InstanceRenewAttribute, nil
 }
 
 // runAliyun executes the aliyun CLI and returns stdout bytes.

@@ -51,7 +51,7 @@ func Columns(provider, resourceType string) []string {
 	}
 	switch resourceType {
 	case "ecs":
-		return []string{"ID", "Name", "Status", "Type", "IP"}
+		return []string{"ID", "Name", "Status", "Type", "IP", "AutoRenew"}
 	case "vpc":
 		return []string{"ID", "Name", "CIDR", "Status"}
 	case "vsw":

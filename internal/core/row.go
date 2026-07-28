@@ -29,8 +29,10 @@ func formatPercent(used, quota int64) string {
 
 func (r Resource) ecsRow() []string {
 	var d struct {
-		InstanceType  string `json:"InstanceType"`
-		VpcAttributes struct {
+		InstanceType     string `json:"InstanceType"`
+		AutoRenewEnabled bool   `json:"AutoRenewEnabled"`
+		RenewalStatus    string `json:"RenewalStatus"`
+		VpcAttributes    struct {
 			PrivateIpAddress struct {
 				IpAddress []string `json:"IpAddress"`
 			} `json:"PrivateIpAddress"`
@@ -41,7 +43,15 @@ func (r Resource) ecsRow() []string {
 	if len(d.VpcAttributes.PrivateIpAddress.IpAddress) > 0 {
 		ip = d.VpcAttributes.PrivateIpAddress.IpAddress[0]
 	}
-	return []string{r.ResourceID, r.ResourceName, r.Status, d.InstanceType, ip}
+	autoRenew := "-"
+	if d.RenewalStatus != "" {
+		if d.AutoRenewEnabled {
+			autoRenew = "On"
+		} else {
+			autoRenew = "Off"
+		}
+	}
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.InstanceType, ip, autoRenew}
 }
 
 func (r Resource) vpcRow() []string {
@@ -152,14 +162,18 @@ func (r Resource) essRow() []string {
 
 func (r Resource) ecsDetail() [][2]string {
 	var d struct {
-		InstanceType  string `json:"InstanceType"`
-		Cpu           int    `json:"Cpu"`
-		Memory        int    `json:"Memory"`
-		ZoneId        string `json:"ZoneId"`
-		OSName        string `json:"OSName"`
-		CreationTime  string `json:"CreationTime"`
-		ExpiredTime   string `json:"ExpiredTime"`
-		VpcAttributes struct {
+		InstanceType      string `json:"InstanceType"`
+		Cpu               int    `json:"Cpu"`
+		Memory            int    `json:"Memory"`
+		ZoneId            string `json:"ZoneId"`
+		OSName            string `json:"OSName"`
+		CreationTime      string `json:"CreationTime"`
+		ExpiredTime       string `json:"ExpiredTime"`
+		AutoRenewEnabled  bool   `json:"AutoRenewEnabled"`
+		RenewalStatus     string `json:"RenewalStatus"`
+		Duration          int    `json:"Duration"`
+		PeriodUnit        string `json:"PeriodUnit"`
+		VpcAttributes     struct {
 			PrivateIpAddress struct {
 				IpAddress []string `json:"IpAddress"`
 			} `json:"PrivateIpAddress"`
@@ -179,7 +193,7 @@ func (r Resource) ecsDetail() [][2]string {
 	if len(d.PublicIpAddress.IpAddress) > 0 {
 		pubIP = d.PublicIpAddress.IpAddress[0]
 	}
-	return [][2]string{
+	pairs := [][2]string{
 		{"ID", r.ResourceID},
 		{"Name", r.ResourceName},
 		{"Status", r.Status},
@@ -193,9 +207,21 @@ func (r Resource) ecsDetail() [][2]string {
 		{"PublicIP", pubIP},
 		{"VPC", d.VpcAttributes.VpcId},
 		{"VSwitch", d.VpcAttributes.VSwitchId},
-		{"Created", d.CreationTime},
-		{"Expires", d.ExpiredTime},
 	}
+	if d.RenewalStatus != "" {
+		autoRenewStatus := "Off"
+		if d.AutoRenewEnabled {
+			autoRenewStatus = "On"
+		}
+		pairs = append(pairs, [2]string{"AutoRenew", autoRenewStatus})
+		pairs = append(pairs, [2]string{"RenewalStatus", d.RenewalStatus})
+		if d.Duration > 0 {
+			pairs = append(pairs, [2]string{"RenewDuration", fmt.Sprintf("%d %s", d.Duration, d.PeriodUnit)})
+		}
+	}
+	pairs = append(pairs, [2]string{"Created", d.CreationTime})
+	pairs = append(pairs, [2]string{"Expires", d.ExpiredTime})
+	return pairs
 }
 
 func (r Resource) vpcDetail() [][2]string {
