@@ -726,6 +726,11 @@ func (r Resource) cmsAlertRow() []string {
 		MetricName    string `json:"MetricName"`
 		EnableState   bool   `json:"EnableState"`
 		ContactGroups string `json:"ContactGroups"`
+		Escalations   struct {
+			Critical cmsEscalationView `json:"Critical"`
+			Warn     cmsEscalationView `json:"Warn"`
+			Info     cmsEscalationView `json:"Info"`
+		} `json:"Escalations"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	enabled := "Off"
@@ -736,7 +741,65 @@ func (r Resource) cmsAlertRow() []string {
 	if groups == "" {
 		groups = "-"
 	}
-	return []string{r.ResourceName, r.Status, enabled, d.Namespace, d.MetricName, groups}
+	threshold := cmsEscalationSummary(d.Escalations.Critical)
+	if threshold == "-" {
+		threshold = cmsEscalationSummary(d.Escalations.Warn)
+	}
+	if threshold == "-" {
+		threshold = cmsEscalationSummary(d.Escalations.Info)
+	}
+	return []string{r.ResourceName, r.Status, enabled, d.Namespace, d.MetricName, threshold, groups}
+}
+
+// cmsEscalationView mirrors aliyun.cmsEscalation for display purposes.
+type cmsEscalationView struct {
+	ComparisonOperator string `json:"ComparisonOperator"`
+	Statistics         string `json:"Statistics"`
+	Threshold          string `json:"Threshold"`
+	Times              int    `json:"Times"`
+}
+
+// cmsEscalationSummary renders one escalation level compactly, e.g.
+// "Average >= 90 ×3". Returns "-" for an empty level.
+func cmsEscalationSummary(e cmsEscalationView) string {
+	if e.Threshold == "" && e.Statistics == "" {
+		return "-"
+	}
+	s := e.Statistics + " " + cmsOperatorSymbol(e.ComparisonOperator) + " " + e.Threshold
+	if e.Times > 0 {
+		s += " ×" + itoa(e.Times)
+	}
+	return s
+}
+
+// cmsOperatorSymbol maps Aliyun comparison operators to compact symbols.
+func cmsOperatorSymbol(op string) string {
+	switch op {
+	case "GreaterThanOrEqualToThreshold":
+		return ">="
+	case "GreaterThanThreshold":
+		return ">"
+	case "LessThanOrEqualToThreshold":
+		return "<="
+	case "LessThanThreshold":
+		return "<"
+	case "NotEqualToThreshold":
+		return "!="
+	case "EqualToThreshold":
+		return "="
+	case "GreaterThanYesterday":
+		return ">yesterday"
+	case "LessThanYesterday":
+		return "<yesterday"
+	case "GreaterThanLastWeek":
+		return ">lastweek"
+	case "LessThanLastWeek":
+		return "<lastweek"
+	case "":
+		return "?"
+	default:
+		return op
+	}
 }
 
 func (r Resource) cmsAlertDetail() [][2]string {
@@ -753,6 +816,25 @@ func (r Resource) cmsAlertDetail() [][2]string {
 		GmtCreate         int64    `json:"GmtCreate"`
 		GmtUpdate         int64    `json:"GmtUpdate"`
 		InstanceIDs       []string `json:"InstanceIDs"`
+		Escalations       struct {
+			Critical cmsEscalationView `json:"Critical"`
+			Warn     cmsEscalationView `json:"Warn"`
+			Info     cmsEscalationView `json:"Info"`
+		} `json:"Escalations"`
+		CompositeExpression struct {
+			ExpressionList struct {
+				ExpressionList []struct {
+					MetricName         string `json:"MetricName"`
+					ComparisonOperator string `json:"ComparisonOperator"`
+					Statistics         string `json:"Statistics"`
+					Threshold          string `json:"Threshold"`
+					Period             int    `json:"Period"`
+				} `json:"ExpressionList"`
+			} `json:"ExpressionList"`
+			ExpressionListJoin string `json:"ExpressionListJoin"`
+			Level              string `json:"Level"`
+			Times              int    `json:"Times"`
+		} `json:"CompositeExpression"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	pairs := [][2]string{
@@ -764,6 +846,28 @@ func (r Resource) cmsAlertDetail() [][2]string {
 	}
 	if d.Period > 0 {
 		pairs = append(pairs, [2]string{"Period", fmt.Sprintf("%ds", d.Period)})
+	}
+	for _, lv := range []struct {
+		label string
+		esc   cmsEscalationView
+	}{
+		{"Critical", d.Escalations.Critical},
+		{"Warn", d.Escalations.Warn},
+		{"Info", d.Escalations.Info},
+	} {
+		if s := cmsEscalationSummary(lv.esc); s != "-" {
+			pairs = append(pairs, [2]string{lv.label, s})
+		}
+	}
+	if len(d.CompositeExpression.ExpressionList.ExpressionList) > 0 {
+		for i, e := range d.CompositeExpression.ExpressionList.ExpressionList {
+			cond := fmt.Sprintf("%s %s %s %s", e.MetricName, e.Statistics, e.ComparisonOperator, e.Threshold)
+			if i > 0 && d.CompositeExpression.ExpressionListJoin != "" {
+				cond = d.CompositeExpression.ExpressionListJoin + " " + cond
+			}
+			pairs = append(pairs, [2]string{fmt.Sprintf("Condition-%d", i+1), cond})
+		}
+		pairs = append(pairs, [2]string{"Level", d.CompositeExpression.Level})
 	}
 	if len(d.InstanceIDs) > 0 {
 		for i, id := range d.InstanceIDs {

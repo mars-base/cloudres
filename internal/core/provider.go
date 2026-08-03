@@ -79,7 +79,7 @@ func Columns(provider, resourceType string) []string {
 	case "cms-cg":
 		return []string{"Name", "Contacts", "Created"}
 	case "cms-alert":
-		return []string{"Name", "State", "Enabled", "Namespace", "Metric", "Groups"}
+		return []string{"Name", "State", "Enabled", "Namespace", "Metric", "Threshold", "Groups"}
 	default:
 		return []string{"ID", "Name", "Status", "Region"}
 	}

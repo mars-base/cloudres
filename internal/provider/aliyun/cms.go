@@ -204,6 +204,25 @@ type cmsAlertRuleListResponse struct {
 	Total int `json:"Total"`
 }
 
+// cmsEscalation is one severity level (Critical/Warn/Info) of an alert rule.
+// Empty levels are omitted by the API as "{}".
+type cmsEscalation struct {
+	ComparisonOperator string `json:"ComparisonOperator"`
+	Statistics         string `json:"Statistics"`
+	Threshold          string `json:"Threshold"`
+	Times              int    `json:"Times"`
+}
+
+// cmsExpression is one condition inside a CompositeExpression (multi-metric
+// rule). Threshold is a string like "80" because the API keeps it raw.
+type cmsExpression struct {
+	MetricName         string `json:"MetricName"`
+	ComparisonOperator string `json:"ComparisonOperator"`
+	Statistics         string `json:"Statistics"`
+	Threshold          string `json:"Threshold"`
+	Period             int    `json:"Period"`
+}
+
 type cmsAlertRule struct {
 	RuleID            string `json:"RuleId"`
 	RuleName          string `json:"RuleName"`
@@ -221,6 +240,19 @@ type cmsAlertRule struct {
 	SourceType        string `json:"SourceType"`
 	GmtCreate         int64  `json:"GmtCreate"`
 	GmtUpdate         int64  `json:"GmtUpdate"`
+	Escalations       struct {
+		Critical cmsEscalation `json:"Critical"`
+		Warn     cmsEscalation `json:"Warn"`
+		Info     cmsEscalation `json:"Info"`
+	} `json:"Escalations"`
+	CompositeExpression struct {
+		ExpressionList struct {
+			ExpressionList []cmsExpression `json:"ExpressionList"`
+		} `json:"ExpressionList"`
+		ExpressionListJoin string `json:"ExpressionListJoin"`
+		Level              string `json:"Level"`
+		Times              int    `json:"Times"`
+	} `json:"CompositeExpression"`
 }
 
 // cmsRuleResource is one entry in the rule's Resources JSON array.
