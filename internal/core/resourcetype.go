@@ -20,6 +20,9 @@ var resourceTypeLabels = map[string]map[string]string{
 		"nlb":  "Network Load Balancer",
 		"ess":  "Auto Scaling (ESS)",
 		"ram":  "RAM User",
+		"cms-ct":      "CMS Alert Contact",
+		"cms-cg":      "CMS Contact Group",
+		"cms-alert":   "CMS Alert Rule",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",

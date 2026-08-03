@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // formatBytes renders a byte count as a human-readable size (GB, with one
@@ -16,6 +18,16 @@ func formatBytes(b int64) string {
 	}
 	const gb = 1024 * 1024 * 1024
 	return fmt.Sprintf("%.1fGB", float64(b)/gb)
+}
+
+// formatMillis renders a millisecond timestamp as "2006-01-02 15:04".
+// CMS APIs (contact/rule metadata) return times as epoch millis rather
+// than ISO strings like other Aliyun products do.
+func formatMillis(ms int64) string {
+	if ms <= 0 {
+		return "-"
+	}
+	return time.UnixMilli(ms).Format("2006-01-02 15:04")
 }
 
 // formatPercent renders a used/quota ratio as a percentage with one decimal
@@ -590,4 +602,190 @@ func (r Resource) ramDetail() [][2]string {
 		{"Created", d.CreateDate},
 		{"Updated", d.UpdateDate},
 	}
+}
+
+func (r Resource) cmsContactRow() []string {
+	var d struct {
+		Channels struct {
+			Mail string `json:"Mail"`
+			SMS  string `json:"SMS"`
+		} `json:"Channels"`
+		ContactGroups struct {
+			ContactGroup []string `json:"ContactGroup"`
+		} `json:"ContactGroups"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	mail := d.Channels.Mail
+	if mail == "" {
+		mail = "-"
+	}
+	sms := d.Channels.SMS
+	if sms == "" {
+		sms = "-"
+	}
+	groups := strings.Join(d.ContactGroups.ContactGroup, ",")
+	if groups == "" {
+		groups = "-"
+	}
+	return []string{r.ResourceID, r.ResourceName, mail, sms, groups}
+}
+
+func (r Resource) cmsContactDetail() [][2]string {
+	var d struct {
+		Desc       string `json:"Desc"`
+		CreateTime int64  `json:"CreateTime"`
+		UpdateTime int64  `json:"UpdateTime"`
+		Channels   struct {
+			Mail string `json:"Mail"`
+			SMS  string `json:"SMS"`
+		} `json:"Channels"`
+		ChannelsState struct {
+			Mail string `json:"Mail"`
+			SMS  string `json:"SMS"`
+		} `json:"ChannelsState"`
+		ContactGroups struct {
+			ContactGroup []string `json:"ContactGroup"`
+		} `json:"ContactGroups"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	pairs := [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+	}
+	if d.Desc != "" {
+		pairs = append(pairs, [2]string{"Desc", d.Desc})
+	}
+	if d.Channels.Mail != "" {
+		state := d.ChannelsState.Mail
+		if state == "" {
+			state = "Unknown"
+		}
+		pairs = append(pairs, [2]string{"Mail", d.Channels.Mail + " (" + state + ")"})
+	}
+	if d.Channels.SMS != "" {
+		state := d.ChannelsState.SMS
+		if state == "" {
+			state = "Unknown"
+		}
+		pairs = append(pairs, [2]string{"SMS", d.Channels.SMS + " (" + state + ")"})
+	}
+	if len(d.ContactGroups.ContactGroup) > 0 {
+		pairs = append(pairs, [2]string{"Groups", strings.Join(d.ContactGroups.ContactGroup, ",")})
+	}
+	pairs = append(pairs, [2]string{"Created", formatMillis(d.CreateTime)})
+	pairs = append(pairs, [2]string{"Updated", formatMillis(d.UpdateTime)})
+	return pairs
+}
+
+func (r Resource) cmsCGRow() []string {
+	var d struct {
+		CreateTime int64 `json:"CreateTime"`
+		Contacts   struct {
+			Contact []string `json:"Contact"`
+		} `json:"Contacts"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	contacts := strings.Join(d.Contacts.Contact, ",")
+	if contacts == "" {
+		contacts = "-"
+	}
+	return []string{r.ResourceName, contacts, formatMillis(d.CreateTime)}
+}
+
+func (r Resource) cmsCGDetail() [][2]string {
+	var d struct {
+		Describe            string `json:"Describe"`
+		CreateTime          int64  `json:"CreateTime"`
+		UpdateTime          int64  `json:"UpdateTime"`
+		EnableSubscribed    bool   `json:"EnableSubscribed"`
+		EnabledWeeklyReport bool   `json:"EnabledWeeklyReport"`
+		Contacts            struct {
+			Contact []string `json:"Contact"`
+		} `json:"Contacts"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	pairs := [][2]string{
+		{"Name", r.ResourceName},
+	}
+	for i, c := range d.Contacts.Contact {
+		pairs = append(pairs, [2]string{fmt.Sprintf("Contact-%d", i+1), c})
+	}
+	if d.Describe != "" {
+		pairs = append(pairs, [2]string{"Describe", d.Describe})
+	}
+	pairs = append(pairs, [2]string{"Subscribed", fmt.Sprintf("%v", d.EnableSubscribed)})
+	pairs = append(pairs, [2]string{"WeeklyReport", fmt.Sprintf("%v", d.EnabledWeeklyReport)})
+	pairs = append(pairs, [2]string{"Created", formatMillis(d.CreateTime)})
+	pairs = append(pairs, [2]string{"Updated", formatMillis(d.UpdateTime)})
+	return pairs
+}
+
+func (r Resource) cmsAlertRow() []string {
+	var d struct {
+		Namespace     string `json:"Namespace"`
+		MetricName    string `json:"MetricName"`
+		EnableState   bool   `json:"EnableState"`
+		ContactGroups string `json:"ContactGroups"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	enabled := "Off"
+	if d.EnableState {
+		enabled = "On"
+	}
+	groups := d.ContactGroups
+	if groups == "" {
+		groups = "-"
+	}
+	return []string{r.ResourceName, r.Status, enabled, d.Namespace, d.MetricName, groups}
+}
+
+func (r Resource) cmsAlertDetail() [][2]string {
+	var d struct {
+		Namespace         string   `json:"Namespace"`
+		MetricName        string   `json:"MetricName"`
+		Period            int      `json:"Period"`
+		ContactGroups     string   `json:"ContactGroups"`
+		EffectiveInterval string   `json:"EffectiveInterval"`
+		SilenceTime       int      `json:"SilenceTime"`
+		NoDataPolicy      string   `json:"NoDataPolicy"`
+		RuleType          string   `json:"RuleType"`
+		SourceType        string   `json:"SourceType"`
+		GmtCreate         int64    `json:"GmtCreate"`
+		GmtUpdate         int64    `json:"GmtUpdate"`
+		InstanceIDs       []string `json:"InstanceIDs"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	pairs := [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Namespace", d.Namespace},
+		{"Metric", d.MetricName},
+	}
+	if d.Period > 0 {
+		pairs = append(pairs, [2]string{"Period", fmt.Sprintf("%ds", d.Period)})
+	}
+	if len(d.InstanceIDs) > 0 {
+		for i, id := range d.InstanceIDs {
+			pairs = append(pairs, [2]string{fmt.Sprintf("Instance-%d", i+1), id})
+		}
+	}
+	if d.ContactGroups != "" {
+		pairs = append(pairs, [2]string{"ContactGroups", d.ContactGroups})
+	}
+	if d.EffectiveInterval != "" {
+		pairs = append(pairs, [2]string{"Effective", d.EffectiveInterval})
+	}
+	if d.SilenceTime > 0 {
+		pairs = append(pairs, [2]string{"Silence", fmt.Sprintf("%ds", d.SilenceTime)})
+	}
+	if d.NoDataPolicy != "" {
+		pairs = append(pairs, [2]string{"NoDataPolicy", d.NoDataPolicy})
+	}
+	if d.RuleType != "" {
+		pairs = append(pairs, [2]string{"RuleType", d.RuleType})
+	}
+	pairs = append(pairs, [2]string{"Created", formatMillis(d.GmtCreate)})
+	pairs = append(pairs, [2]string{"Updated", formatMillis(d.GmtUpdate)})
+	return pairs
 }

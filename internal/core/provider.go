@@ -74,6 +74,12 @@ func Columns(provider, resourceType string) []string {
 		return []string{"ID", "Name", "Status", "Active/Max", "GroupType"}
 	case "ram":
 		return []string{"ID", "Name", "DisplayName", "Created"}
+	case "cms-ct":
+		return []string{"ID", "Name", "Mail", "SMS", "Groups"}
+	case "cms-cg":
+		return []string{"Name", "Contacts", "Created"}
+	case "cms-alert":
+		return []string{"Name", "State", "Enabled", "Namespace", "Metric", "Groups"}
 	default:
 		return []string{"ID", "Name", "Status", "Region"}
 	}
@@ -109,6 +115,12 @@ func (r Resource) Detail() [][2]string {
 		return r.essDetail()
 	case "ram":
 		return r.ramDetail()
+	case "cms-ct":
+		return r.cmsContactDetail()
+	case "cms-cg":
+		return r.cmsCGDetail()
+	case "cms-alert":
+		return r.cmsAlertDetail()
 	default:
 		return [][2]string{
 			{"ID", r.ResourceID},
@@ -149,6 +161,12 @@ func (r Resource) Row() []string {
 		return r.essRow()
 	case "ram":
 		return r.ramRow()
+	case "cms-ct":
+		return r.cmsContactRow()
+	case "cms-cg":
+		return r.cmsCGRow()
+	case "cms-alert":
+		return r.cmsAlertRow()
 	default:
 		return []string{r.ResourceID, r.ResourceName, r.Status, r.Region}
 	}
