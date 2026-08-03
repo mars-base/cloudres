@@ -28,7 +28,7 @@ an interactive terminal UI for browsing resources across regions.
 
 | Code | Resource | Detail Fields |
 |------|----------|---------------|
-| `ecs` | Elastic Compute Service | CPU, memory, OS, private/public IP, VPC, zone |
+| `ecs` | Elastic Compute Service | CPU, memory, OS, private/public IP, VPC, zone, auto-renewal (PrePaid) |
 | `vpc` | Virtual Private Cloud | CIDR, IPv6 CIDR |
 | `vsw` | VSwitch (Subnet) | CIDR, zone, VPC |
 | `rds` | Relational Database Service | Engine, class, storage, disk/backup size, endpoint |
@@ -39,6 +39,10 @@ an interactive terminal UI for browsing resources across regions.
 | `alb` | Application Load Balancer | Address type, edition, DNS, VPC |
 | `nlb` | Network Load Balancer | Address type, DNS, VPC |
 | `ess` | Auto Scaling (ESS) | Group type, active/max/min capacity |
+| `ram` | RAM User | Display name, comments, created/updated time |
+| `cms-ct` | CloudMonitor Alert Contact | Mail, SMS, channel verification state, groups |
+| `cms-cg` | CloudMonitor Contact Group | Members, subscription, weekly report |
+| `cms-alert` | CloudMonitor Alert Rule | Namespace, metric, thresholds (Critical/Warn/Info), instances, contact groups |
 
 ### Resource Types (Huawei Cloud)
 
@@ -118,6 +122,11 @@ cloudres aliyun ecs --region cn-hangzhou
 
 # Force re-sync before listing
 cloudres aliyun pdb --sync
+
+# CloudMonitor: alert rules with thresholds, contacts and contact groups
+cloudres aliyun cms-alert
+cloudres aliyun cms-ct --profile production
+cloudres aliyun cms-cg --sync
 
 # Huawei Cloud
 cloudres huawei ecs --sync
