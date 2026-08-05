@@ -72,10 +72,6 @@ var (
 			Background(lipgloss.Color("#1a1b26")).
 			Padding(0, 1)
 
-	// Breadcrumb separator
-	crumbSep = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#565f89"))
-
 	// Breadcrumb active item
 	crumbActive = lipgloss.NewStyle().
 			Bold(true).

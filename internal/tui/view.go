@@ -312,47 +312,10 @@ func (m *appModel) renderDetailPanel(availableHeight int) string {
 	return strings.Join(lines, "\n")
 }
 
-// ── Header (breadcrumb) ───────────────────────────────────────
+// ── Header ──────────────────────────────────────────────────────
 
 func (m *appModel) viewHeader() string {
-	var plainParts []string
-	if m.currentProvider != nil {
-		plainParts = append(plainParts, m.currentProvider.Name)
-	}
-	if m.currentProfile != "" {
-		plainParts = append(plainParts, "("+m.currentProfile+")")
-	}
-	if m.currentRegion != "" {
-		plainParts = append(plainParts, m.currentRegion)
-	}
-	if m.currentResource != "" {
-		plainParts = append(plainParts, m.currentResource)
-	}
-
-	var sb strings.Builder
-	sb.WriteString(crumbActive.Render("cloudres"))
-	for _, p := range plainParts {
-		sb.WriteString(crumbSep.Render(" › "))
-		sb.WriteString(crumbActive.Render(p))
-	}
-	path := sb.String()
-	pathPlain := "cloudres"
-	if len(plainParts) > 0 {
-		pathPlain += " › " + strings.Join(plainParts, " › ")
-	}
-
-	var info string
-	infoPlain := ""
-	if m.currentProvider != nil && m.currentProvider.ConfigPath != "" {
-		infoPlain = "[" + m.currentProvider.ConfigPath + "]"
-		info = dimStyle.Render(infoPlain)
-	}
-
-	if info != "" {
-		padding := max(1, m.width-len(pathPlain)-len(infoPlain))
-		return headerStyle.Width(m.width).Render(path + strings.Repeat(" ", padding) + info)
-	}
-	return headerStyle.Width(m.width).Render(path)
+	return headerStyle.Width(m.width).Render(crumbActive.Render("cloudres"))
 }
 
 // ── Footer (key hints) ────────────────────────────────────────
