@@ -23,6 +23,9 @@ var resourceTypeLabels = map[string]map[string]string{
 		"cms-ct":      "CMS Alert Contact",
 		"cms-cg":      "CMS Contact Group",
 		"cms-alert":   "CMS Alert Rule",
+		"arms-ct":     "ARMS Alert Contact",
+		"arms-cg":     "ARMS Contact Group",
+		"arms-alert":  "ARMS Alert Rule",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",

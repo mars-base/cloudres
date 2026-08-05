@@ -893,3 +893,152 @@ func (r Resource) cmsAlertDetail() [][2]string {
 	pairs = append(pairs, [2]string{"Updated", formatMillis(d.GmtUpdate)})
 	return pairs
 }
+
+// ARMS Alert Contact
+func (r Resource) armsContactRow() []string {
+	var d struct {
+		Email string `json:"Email"`
+		Phone string `json:"Phone"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	email := d.Email
+	if email == "" {
+		email = "-"
+	}
+	phone := d.Phone
+	if phone == "" {
+		phone = "-"
+	}
+	return []string{r.ResourceID, r.ResourceName, email, phone, r.Status}
+}
+
+func (r Resource) armsContactDetail() [][2]string {
+	var d struct {
+		ContactName   string `json:"ContactName"`
+		Email         string `json:"Email"`
+		Phone         string `json:"Phone"`
+		IsVerify      bool   `json:"IsVerify"`
+		IsEmailVerify bool   `json:"IsEmailVerify"`
+		ArmsContactID int    `json:"ArmsContactId"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	phoneStatus := "unverified"
+	if d.IsVerify {
+		phoneStatus = "verified"
+	}
+	emailStatus := "unverified"
+	if d.IsEmailVerify {
+		emailStatus = "verified"
+	}
+	pairs := [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"ArmsContactID", itoa(d.ArmsContactID)},
+	}
+	if d.Email != "" {
+		pairs = append(pairs, [2]string{"Email", d.Email})
+		pairs = append(pairs, [2]string{"EmailStatus", emailStatus})
+	}
+	if d.Phone != "" {
+		pairs = append(pairs, [2]string{"Phone", d.Phone})
+		pairs = append(pairs, [2]string{"PhoneStatus", phoneStatus})
+	}
+	return pairs
+}
+
+// ARMS Alert Contact Group
+func (r Resource) armsContactGroupRow() []string {
+	return []string{r.ResourceID, r.ResourceName, r.Status}
+}
+
+func (r Resource) armsContactGroupDetail() [][2]string {
+	var d struct {
+		ContactGroupName   string `json:"ContactGroupName"`
+		ArmsContactGroupID int    `json:"ArmsContactGroupId"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"ArmsContactGroupID", itoa(d.ArmsContactGroupID)},
+		{"Status", r.Status},
+	}
+}
+
+// ARMS Alert Rules
+func (r Resource) armsAlertRow() []string {
+	var d struct {
+		AlertLevel string   `json:"AlertLevel"`
+		AlertType  int      `json:"AlertType"`
+		AlertWays  []string `json:"AlertWays"`
+		CreateTime int64    `json:"CreateTime"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	ways := "-"
+	if len(d.AlertWays) > 0 {
+		ways = strings.Join(d.AlertWays, ",")
+	}
+	alertType := armsAlertTypeName(d.AlertType)
+	return []string{r.ResourceName, r.Status, r.Region, d.AlertLevel, alertType, ways, formatMillis(d.CreateTime)}
+}
+
+func (r Resource) armsAlertDetail() [][2]string {
+	var d struct {
+		AlertLevel string   `json:"AlertLevel"`
+		AlertType  int      `json:"AlertType"`
+		AlertWays  []string `json:"AlertWays"`
+		RegionID   string   `json:"RegionId"`
+		CreateTime int64    `json:"CreateTime"`
+		UpdateTime int64    `json:"UpdateTime"`
+		HostByAlertManager bool `json:"HostByAlertManager"`
+		AlertRule struct {
+			Operator string `json:"Operator"`
+			Rules    []struct {
+				Measure  string  `json:"Measure"`
+				NValue   int     `json:"NValue"`
+				Operator string  `json:"Operator"`
+				Value    float64 `json:"Value"`
+			} `json:"Rules"`
+		} `json:"AlertRule"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	pairs := [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", r.ResourceName},
+		{"Status", r.Status},
+		{"Region", d.RegionID},
+		{"Level", d.AlertLevel},
+		{"Type", armsAlertTypeName(d.AlertType)},
+	}
+	if len(d.AlertWays) > 0 {
+		pairs = append(pairs, [2]string{"AlertWays", strings.Join(d.AlertWays, ",")})
+	}
+	if d.HostByAlertManager {
+		pairs = append(pairs, [2]string{"AlertManager", "true"})
+	}
+	for i, rule := range d.AlertRule.Rules {
+		label := fmt.Sprintf("Rule-%d", i+1)
+		desc := rule.Measure
+		if desc == "" {
+			desc = fmt.Sprintf("%s %.2f (N=%d)", rule.Operator, rule.Value, rule.NValue)
+		}
+		pairs = append(pairs, [2]string{label, desc})
+	}
+	pairs = append(pairs, [2]string{"Created", formatMillis(d.CreateTime)})
+	pairs = append(pairs, [2]string{"Updated", formatMillis(d.UpdateTime)})
+	return pairs
+}
+
+// armsAlertTypeName maps ARMS AlertType numeric codes to short labels.
+func armsAlertTypeName(t int) string {
+	switch t {
+	case 5:
+		return "app"
+	case 7:
+		return "prometheus"
+	case 101:
+		return "prometheus-hosted"
+	default:
+		return fmt.Sprintf("type-%d", t)
+	}
+}
