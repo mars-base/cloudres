@@ -897,8 +897,10 @@ func (r Resource) cmsAlertDetail() [][2]string {
 // ARMS Alert Contact
 func (r Resource) armsContactRow() []string {
 	var d struct {
-		Email string `json:"Email"`
-		Phone string `json:"Phone"`
+		Email         string `json:"Email"`
+		Phone         string `json:"Phone"`
+		IsVerify      bool   `json:"IsVerify"`
+		IsEmailVerify bool   `json:"IsEmailVerify"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	email := d.Email
@@ -909,7 +911,15 @@ func (r Resource) armsContactRow() []string {
 	if phone == "" {
 		phone = "-"
 	}
-	return []string{r.ResourceID, r.ResourceName, email, phone, r.Status}
+	emailStatus := "unverified"
+	if d.IsEmailVerify {
+		emailStatus = "verified"
+	}
+	phoneStatus := "unverified"
+	if d.IsVerify {
+		phoneStatus = "verified"
+	}
+	return []string{r.ResourceID, r.ResourceName, email, phone, emailStatus, phoneStatus}
 }
 
 func (r Resource) armsContactDetail() [][2]string {

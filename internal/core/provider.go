@@ -81,7 +81,7 @@ func Columns(provider, resourceType string) []string {
 	case "cms-alert":
 		return []string{"Name", "State", "Enabled", "Namespace", "Metric", "Threshold", "Groups"}
 	case "arms-ct":
-		return []string{"ID", "Name", "Email", "Phone", "Status"}
+		return []string{"ID", "Name", "Email", "Phone", "EmailStatus", "PhoneStatus"}
 	case "arms-cg":
 		return []string{"ID", "Name", "Status"}
 	case "arms-alert":
