@@ -67,6 +67,9 @@ func (r Resource) huaweiECSRow() []string {
 			Addr string `json:"addr"`
 			Type string `json:"OS-EXT-IPS:type"`
 		} `json:"addresses"`
+		Metadata struct {
+			ChargingMode string `json:"charging_mode"`
+		} `json:"metadata"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	ip := ""
@@ -77,7 +80,18 @@ func (r Resource) huaweiECSRow() []string {
 			}
 		}
 	}
-	return []string{r.ResourceID, r.ResourceName, r.Status, d.Flavor.Name, ip}
+
+	chargeMode := d.Metadata.ChargingMode
+	switch chargeMode {
+	case "0":
+		chargeMode = "按需"
+	case "1":
+		chargeMode = "包年包月"
+	case "2":
+		chargeMode = "竞价"
+	}
+
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.Flavor.Name, ip, chargeMode}
 }
 
 func (r Resource) huaweiECSDetail() [][2]string {
@@ -94,8 +108,9 @@ func (r Resource) huaweiECSDetail() [][2]string {
 			Type string `json:"OS-EXT-IPS:type"`
 		} `json:"addresses"`
 		Metadata struct {
-			OsType string `json:"os_type"`
-			VpcID  string `json:"vpc_id"`
+			OsType       string `json:"os_type"`
+			VpcID        string `json:"vpc_id"`
+			ChargingMode string `json:"charging_mode"`
 		} `json:"metadata"`
 		AvailabilityZone string   `json:"OS-EXT-AZ:availability_zone"`
 		KeyName          string   `json:"key_name"`
@@ -125,6 +140,16 @@ func (r Resource) huaweiECSDetail() [][2]string {
 		memGB = fmt.Sprintf("%dGB", memMB/1024)
 	}
 
+	chargeMode := d.Metadata.ChargingMode
+	switch chargeMode {
+	case "0":
+		chargeMode = "按需付费"
+	case "1":
+		chargeMode = "包年包月"
+	case "2":
+		chargeMode = "竞价实例"
+	}
+
 	return [][2]string{
 		{"ID", r.ResourceID},
 		{"Name", r.ResourceName},
@@ -137,6 +162,7 @@ func (r Resource) huaweiECSDetail() [][2]string {
 		{"PublicIP", pubIP},
 		{"VPC", vpcID},
 		{"KeyName", d.KeyName},
+		{"ChargeMode", chargeMode},
 		{"Created", d.Created},
 		{"Description", d.Description},
 	}

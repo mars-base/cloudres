@@ -39,8 +39,9 @@ type ecsServer struct {
 		Type    string `json:"OS-EXT-IPS:type"`
 	} `json:"addresses"`
 	Metadata struct {
-		OsType string `json:"os_type"`
-		VpcID  string `json:"vpc_id"`
+		OsType       string `json:"os_type"`
+		VpcID        string `json:"vpc_id"`
+		ChargingMode string `json:"charging_mode"`
 	} `json:"metadata"`
 	AvailabilityZone string   `json:"OS-EXT-AZ:availability_zone"`
 	KeyName          string   `json:"key_name"`

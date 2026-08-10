@@ -35,7 +35,7 @@ type Resource struct {
 func Columns(provider, resourceType string) []string {
 	switch {
 	case provider == "huawei" && resourceType == "ecs":
-		return []string{"ID", "Name", "Status", "Flavor", "IP"}
+		return []string{"ID", "Name", "Status", "Flavor", "IP", "ChargeMode"}
 	case provider == "huawei" && resourceType == "vpc":
 		return []string{"ID", "Name", "CIDR", "Status"}
 	case provider == "huawei" && resourceType == "subnet":
