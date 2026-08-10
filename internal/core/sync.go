@@ -61,6 +61,14 @@ func doSync(ctx context.Context, db *DB, provider *Provider, fetcher ResourceFet
 		resources[i].Profile = profile
 	}
 
+	// Delete old cached resources for this provider+profile+type before
+	// writing fresh data, so that resources removed in the cloud are also
+	// removed from the local cache.
+	if err := db.DeleteResourcesForProfileType(provider.Name, profile, rtype); err != nil {
+		db.UpdateSyncLog(logID, "failed", err.Error(), 0)
+		return fmt.Errorf("delete old resources: %w", err)
+	}
+
 	if err := db.UpsertResources(resources); err != nil {
 		db.UpdateSyncLog(logID, "failed", err.Error(), 0)
 		return fmt.Errorf("upsert resources: %w", err)

@@ -155,11 +155,22 @@ func (d *DB) UpsertResources(resources []Resource) error {
 	return tx.Commit()
 }
 
+// DeleteResourcesForProfileType removes all cached resources for a given
+// provider + profile + resource type combination, used by sync to purge
+// stale rows before writing fresh data.
+func (d *DB) DeleteResourcesForProfileType(provider, profile, resourceType string) error {
+	_, err := d.db.Exec(
+		`DELETE FROM resources WHERE provider = ? AND profile = ? AND resource_type = ?`,
+		provider, profile, resourceType,
+	)
+	return err
+}
+
 // ListResources returns resources filtered by provider, profile, type, and optional region.
 func (d *DB) ListResources(provider, profile, resourceType, region string) ([]Resource, error) {
 	query := `SELECT provider, profile, resource_type, region, resource_id, resource_name, status, raw_json, synced_at
 		FROM resources WHERE provider = ? AND profile = ? AND resource_type = ?`
-	args := []interface{}{provider, profile, resourceType}
+	args := []any{provider, profile, resourceType}
 
 	if region != "" {
 		query += " AND (region = ? OR region = '')"
