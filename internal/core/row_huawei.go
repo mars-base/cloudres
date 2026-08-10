@@ -84,11 +84,11 @@ func (r Resource) huaweiECSRow() []string {
 	chargeMode := d.Metadata.ChargingMode
 	switch chargeMode {
 	case "0":
-		chargeMode = "按需"
+		chargeMode = "PostPaid"
 	case "1":
-		chargeMode = "包年包月"
+		chargeMode = "PrePaid"
 	case "2":
-		chargeMode = "竞价"
+		chargeMode = "Spot"
 	}
 
 	return []string{r.ResourceID, r.ResourceName, r.Status, d.Flavor.Name, ip, chargeMode}
@@ -143,11 +143,11 @@ func (r Resource) huaweiECSDetail() [][2]string {
 	chargeMode := d.Metadata.ChargingMode
 	switch chargeMode {
 	case "0":
-		chargeMode = "按需付费"
+		chargeMode = "PostPaid"
 	case "1":
-		chargeMode = "包年包月"
+		chargeMode = "PrePaid"
 	case "2":
-		chargeMode = "竞价实例"
+		chargeMode = "Spot"
 	}
 
 	return [][2]string{
