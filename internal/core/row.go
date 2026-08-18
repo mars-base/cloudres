@@ -1052,3 +1052,53 @@ func armsAlertTypeName(t int) string {
 		return fmt.Sprintf("type-%d", t)
 	}
 }
+
+// ── CAS (Certificate) ───────────────────────────────────────────────
+
+func (r Resource) casRow() []string {
+	var d struct {
+		Domain            string `json:"Domain"`
+		CertificateStatus string `json:"CertificateStatus"`
+		Issuer            string `json:"Issuer"`
+		NotAfter          int64  `json:"NotAfter"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	expire := formatMillis(d.NotAfter)
+	return []string{r.ResourceID, r.ResourceName, d.Domain, d.CertificateStatus, d.Issuer, expire}
+}
+
+func (r Resource) casDetail() [][2]string {
+	var d struct {
+		CertificateId     string   `json:"CertificateId"`
+		CertificateName   string   `json:"CertificateName"`
+		Domain            string   `json:"Domain"`
+		CommonName        string   `json:"CommonName"`
+		Issuer            string   `json:"Issuer"`
+		CertificateStatus string   `json:"CertificateStatus"`
+		CertificateSource string   `json:"CertificateSource"`
+		NotBefore         int64    `json:"NotBefore"`
+		NotAfter          int64    `json:"NotAfter"`
+		Algorithm         string   `json:"Algorithm"`
+		KeySize           int      `json:"KeySize"`
+		UsingProductList  []string `json:"UsingProductList"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+
+	pairs := [][2]string{
+		{"ID", r.ResourceID},
+		{"Name", d.CertificateName},
+		{"Region", r.Region},
+		{"Domain", d.Domain},
+		{"CommonName", d.CommonName},
+		{"Status", d.CertificateStatus},
+		{"Source", d.CertificateSource},
+		{"Issuer", d.Issuer},
+		{"Algorithm", fmt.Sprintf("%s %d", d.Algorithm, d.KeySize)},
+		{"NotBefore", formatMillis(d.NotBefore)},
+		{"NotAfter", formatMillis(d.NotAfter)},
+	}
+	if len(d.UsingProductList) > 0 {
+		pairs = append(pairs, [2]string{"UsingProducts", strings.Join(d.UsingProductList, ", ")})
+	}
+	return pairs
+}
