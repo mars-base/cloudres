@@ -88,6 +88,10 @@ func Columns(provider, resourceType string) []string {
 		return []string{"Name", "Status", "Region", "Level", "Type", "Ways", "Created"}
 	case "cas":
 		return []string{"ID", "Name", "Domain", "Status", "Issuer", "Expire"}
+	case "ack":
+		return []string{"ID", "Name", "State", "Version", "Type", "Region", "Nodes", "Created"}
+	case "acr":
+		return []string{"ID", "Name", "Status", "Spec", "Region", "NS", "Repos", "ACL", "Created"}
 	default:
 		return []string{"ID", "Name", "Status", "Region"}
 	}
@@ -137,6 +141,10 @@ func (r Resource) Detail() [][2]string {
 		return r.armsAlertDetail()
 	case "cas":
 		return r.casDetail()
+	case "ack":
+		return r.ackDetail()
+	case "acr":
+		return r.acrDetail()
 	default:
 		return [][2]string{
 			{"ID", r.ResourceID},
@@ -191,6 +199,10 @@ func (r Resource) Row() []string {
 		return r.armsAlertRow()
 	case "cas":
 		return r.casRow()
+	case "ack":
+		return r.ackRow()
+	case "acr":
+		return r.acrRow()
 	default:
 		return []string{r.ResourceID, r.ResourceName, r.Status, r.Region}
 	}

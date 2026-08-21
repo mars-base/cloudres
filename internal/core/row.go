@@ -1102,3 +1102,109 @@ func (r Resource) casDetail() [][2]string {
 	}
 	return pairs
 }
+
+// ── ACK (Kubernetes Cluster) ────────────────────────────────────────────
+
+func (r Resource) ackRow() []string {
+	var d struct {
+		ClusterType    string `json:"cluster_type"`
+		CurrentVersion string `json:"current_version"`
+		Size           int    `json:"size"`
+		Created        string `json:"created"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	created := d.Created
+	if len(created) > 10 {
+		created = created[:10] // keep date only
+	}
+	return []string{r.ResourceID, r.ResourceName, r.Status, d.CurrentVersion, d.ClusterType, r.Region, fmt.Sprintf("%d", d.Size), created}
+}
+
+func (r Resource) ackDetail() [][2]string {
+	var d struct {
+		ClusterID      string `json:"cluster_id"`
+		Name           string `json:"name"`
+		ClusterType    string `json:"cluster_type"`
+		ClusterSpec    string `json:"cluster_spec"`
+		State          string `json:"state"`
+		CurrentVersion string `json:"current_version"`
+		RegionID       string `json:"region_id"`
+		Size           int    `json:"size"`
+		Created        string `json:"created"`
+		NetworkMode    string `json:"network_mode"`
+		ProxyMode      string `json:"proxy_mode"`
+		ServiceCIDR    string `json:"service_cidr"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+
+	return [][2]string{
+		{"ID", d.ClusterID},
+		{"Name", d.Name},
+		{"Region", d.RegionID},
+		{"Status", d.State},
+		{"Type", d.ClusterType},
+		{"Spec", d.ClusterSpec},
+		{"Version", d.CurrentVersion},
+		{"Nodes", fmt.Sprintf("%d", d.Size)},
+		{"NetworkMode", d.NetworkMode},
+		{"ProxyMode", d.ProxyMode},
+		{"ServiceCIDR", d.ServiceCIDR},
+		{"Created", d.Created},
+	}
+}
+
+// ── ACR (Container Registry) ────────────────────────────────────────────
+
+func (r Resource) acrRow() []string {
+	var d struct {
+		InstanceSpecification string   `json:"InstanceSpecification"`
+		RegionID              string   `json:"RegionId"`
+		CreateTime            int64    `json:"CreateTime"`
+		Namespaces            []string `json:"namespaces"`
+		RepoCount             int      `json:"repo_count"`
+		ACLCount              int      `json:"acl_count"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{
+		r.ResourceID, r.ResourceName, r.Status, d.InstanceSpecification,
+		d.RegionID,
+		itoa(len(d.Namespaces)),
+		itoa(d.RepoCount),
+		itoa(d.ACLCount),
+		formatMillis(d.CreateTime),
+	}
+}
+
+func (r Resource) acrDetail() [][2]string {
+	var d struct {
+		InstanceID            string   `json:"InstanceId"`
+		InstanceName          string   `json:"InstanceName"`
+		InstanceSpecification string   `json:"InstanceSpecification"`
+		InstanceStatus        string   `json:"InstanceStatus"`
+		RegionID              string   `json:"RegionId"`
+		CreateTime            int64    `json:"CreateTime"`
+		ModifiedTime          int64    `json:"ModifiedTime"`
+		ResourceGroupID       string   `json:"ResourceGroupId"`
+		Namespaces            []string `json:"namespaces"`
+		RepoCount             int      `json:"repo_count"`
+		Endpoint              string   `json:"endpoint"`
+		ACLCount              int      `json:"acl_count"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+
+	pairs := [][2]string{
+		{"ID", d.InstanceID},
+		{"Name", d.InstanceName},
+		{"Region", d.RegionID},
+		{"Status", d.InstanceStatus},
+		{"Spec", d.InstanceSpecification},
+		{"ResourceGroup", d.ResourceGroupID},
+		{"Namespaces", strings.Join(d.Namespaces, ", ")},
+		{"Repositories", itoa(d.RepoCount)},
+		{"Endpoint", d.Endpoint},
+		{"ACL Entries", itoa(d.ACLCount)},
+		{"Created", formatMillis(d.CreateTime)},
+		{"Modified", formatMillis(d.ModifiedTime)},
+	}
+	return pairs
+}

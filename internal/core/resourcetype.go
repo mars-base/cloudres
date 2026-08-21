@@ -27,6 +27,8 @@ var resourceTypeLabels = map[string]map[string]string{
 		"arms-cg":     "ARMS Contact Group",
 		"arms-alert":  "ARMS Alert Rule",
 		"cas":         "Certificate (SSL/TLS)",
+		"ack":         "Container Service (ACK)",
+		"acr":         "Container Registry (ACR)",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",
