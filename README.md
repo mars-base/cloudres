@@ -43,6 +43,13 @@ an interactive terminal UI for browsing resources across regions.
 | `cms-ct` | CloudMonitor Alert Contact | Mail, SMS, channel verification state, groups |
 | `cms-cg` | CloudMonitor Contact Group | Members, subscription, weekly report |
 | `cms-alert` | CloudMonitor Alert Rule | Namespace, metric, thresholds (Critical/Warn/Info), instances, contact groups |
+| `arms-ct` | ARMS Alert Contact | Name, email, phone, verification status |
+| `arms-cg` | ARMS Contact Group | Name, contacts, status |
+| `arms-alert` | ARMS Alert Rule | Name, status, region, level, type, notification ways |
+| `cas` | Certificate (SSL/TLS) | Domain, issuer, expiration date, status, certificate ID |
+| `ack` | Container Service (ACK) | Cluster ID, name, state, version, node count, region |
+| `acr` | Container Registry (ACR) | Instance ID, name, specification, namespace count, repository count, ACL entries |
+| `acl` | Access Control List | ACL ID, name, IP entries, bound ALBs, listener count |
 
 ### Resource Types (Huawei Cloud)
 
@@ -128,6 +135,23 @@ cloudres aliyun cms-alert
 cloudres aliyun cms-ct --profile production
 cloudres aliyun cms-cg --sync
 
+# ARMS: alert contacts, contact groups, and alert rules
+cloudres aliyun arms-ct
+cloudres aliyun arms-cg
+cloudres aliyun arms-alert
+
+# SSL/TLS certificates
+cloudres aliyun cas --sync
+
+# Container Service (Kubernetes clusters)
+cloudres aliyun ack
+
+# Container Registry (instances with namespace/repo counts)
+cloudres aliyun acr
+
+# Access Control Lists (IP whitelist/blacklist for ALB)
+cloudres aliyun acl --region cn-hangzhou
+
 # Huawei Cloud
 cloudres huawei ecs --sync
 cloudres huawei eip
@@ -167,7 +191,10 @@ cloudres version
 
 | Key | Action |
 |-----|--------|
-| `Esc` / `d` | Back to main view |
+| `↑` / `↓` / `j` / `k` | Scroll detail content |
+| `/` | Search within detail (filter key-value lines) |
+| `Enter` | Confirm search |
+| `Esc` / `d` | Back to main view (or clear search) |
 | `q` | Quit |
 
 ### Command Mode
