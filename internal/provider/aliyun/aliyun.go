@@ -19,7 +19,7 @@ func NewDetector() *Detector {
 func (d *Detector) Name() string { return "aliyun" }
 
 func (d *Detector) ResourceTypes() []string {
-	return []string{"ecs", "vpc", "vsw", "rds", "tair", "pdb", "oss", "slb", "alb", "nlb", "ess", "ram", "cms-ct", "cms-cg", "cms-alert", "arms-ct", "arms-cg", "arms-alert", "cas", "ack", "acr"}
+	return []string{"ecs", "vpc", "vsw", "rds", "tair", "pdb", "oss", "slb", "alb", "nlb", "ess", "ram", "cms-ct", "cms-cg", "cms-alert", "arms-ct", "arms-cg", "arms-alert", "cas", "ack", "acr", "acl"}
 }
 
 func (d *Detector) Fetchers() []core.ResourceFetcher {
@@ -45,6 +45,7 @@ func (d *Detector) Fetchers() []core.ResourceFetcher {
 		&CASFetcher{},
 		&ACKFetcher{},
 		&ACRFetcher{},
+		&ACLFetcher{},
 	}
 }
 

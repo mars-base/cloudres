@@ -1208,3 +1208,58 @@ func (r Resource) acrDetail() [][2]string {
 	}
 	return pairs
 }
+
+// ── ACL (Access Control List) ───────────────────────────────────────────
+
+func (r Resource) aclRow() []string {
+	var d struct {
+		CreateTime string   `json:"CreateTime"`
+		IPCount    int      `json:"ip_count"`
+		ALBs       []string `json:"albs"`
+		Listeners  int      `json:"listeners"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	created := d.CreateTime
+	if len(created) > 10 {
+		created = created[:10]
+	}
+	return []string{
+		r.ResourceID, r.ResourceName, r.Status,
+		itoa(d.IPCount), itoa(len(d.ALBs)), itoa(d.Listeners),
+		created,
+	}
+}
+
+func (r Resource) aclDetail() [][2]string {
+	var d struct {
+		AclID            string   `json:"AclId"`
+		AclName          string   `json:"AclName"`
+		AclStatus        string   `json:"AclStatus"`
+		AddressIPVersion string   `json:"AddressIPVersion"`
+		CreateTime       string   `json:"CreateTime"`
+		ResourceGroupID  string   `json:"ResourceGroupId"`
+		IPCount          int      `json:"ip_count"`
+		IPs              []string `json:"ips"`
+		ALBs             []string `json:"albs"`
+		Listeners        int      `json:"listeners"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+
+	pairs := [][2]string{
+		{"ID", d.AclID},
+		{"Name", d.AclName},
+		{"Region", r.Region},
+		{"Status", d.AclStatus},
+		{"IPVersion", d.AddressIPVersion},
+		{"ResourceGroup", d.ResourceGroupID},
+		{"IP Entries", itoa(d.IPCount)},
+		{"Bound ALBs", strings.Join(d.ALBs, ", ")},
+		{"Listeners", itoa(d.Listeners)},
+		{"Created", d.CreateTime},
+	}
+	// Append each IP as a separate row in the detail view
+	for _, ip := range d.IPs {
+		pairs = append(pairs, [2]string{"IP", ip})
+	}
+	return pairs
+}

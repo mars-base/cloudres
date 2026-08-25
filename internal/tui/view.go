@@ -204,10 +204,15 @@ func (m *appModel) renderUpperPanel() string {
 	}
 
 	// Filter input box
-	if m.filterMode {
+	if m.filterMode || (m.state == StateDetail && (m.detailSearchMode || m.detailSearchInput != "")) {
 		sb.WriteByte('\n')
 		prompt := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7dcfff")).Render("/")
-		input := crumbActive.Render(m.filterInput)
+		var input string
+		if m.state == StateDetail {
+			input = crumbActive.Render(m.detailSearchInput)
+		} else {
+			input = crumbActive.Render(m.filterInput)
+		}
 		cursor := lipgloss.NewStyle().Foreground(lipgloss.Color("#c0caf5")).Render("▏")
 		sb.WriteString(cmdStyle.Width(m.width).Render(prompt + input + cursor))
 		sb.WriteByte('\n')
@@ -285,6 +290,7 @@ func (m *appModel) viewDetail() string {
 
 // renderDetailPanel renders the selected resource's key-value detail,
 // in place of the lower panel's resource table.
+// Supports scrolling (↑↓) and search (`/` + query).
 func (m *appModel) renderDetailPanel(availableHeight int) string {
 	resources := m.visibleResources()
 	if m.cursor >= len(resources) {
@@ -294,11 +300,19 @@ func (m *appModel) renderDetailPanel(availableHeight int) string {
 	r := resources[m.cursor]
 	details := r.Detail()
 
-	var lines []string
-	lines = append(lines, "  "+colHeaderStyle.Render("── Resource Detail ──"))
-	lines = append(lines, "")
+	// Build all lines first (before search filtering)
+	var allLines []string
+	allLines = append(allLines, "  "+colHeaderStyle.Render("── Resource Detail ──"))
+	allLines = append(allLines, "")
 
+	q := strings.ToLower(m.detailSearchInput)
 	for _, kv := range details {
+		// If search is active, skip non-matching lines
+		if q != "" {
+			if !strings.Contains(strings.ToLower(kv[0]), q) && !strings.Contains(strings.ToLower(kv[1]), q) {
+				continue
+			}
+		}
 		label := labelStyle.Render(kv[0])
 		value := kv[1]
 		if value == "" {
@@ -306,10 +320,41 @@ func (m *appModel) renderDetailPanel(availableHeight int) string {
 		} else {
 			value = valueStyle.Render(value)
 		}
-		lines = append(lines, "  "+label+"  "+value)
+		allLines = append(allLines, "  "+label+"  "+value)
 	}
 
-	return strings.Join(lines, "\n")
+	// Scrollable: clamp offset and window into availableHeight
+	// Reserve 1 line for search bar if in search mode or search is active
+	reservedFooter := 0
+	if m.detailSearchMode || m.detailSearchInput != "" {
+		reservedFooter = 1
+	}
+	visibleLines := max(1, availableHeight-reservedFooter)
+
+	// Clamp offset
+	maxOffset := max(0, len(allLines)-visibleLines)
+	if m.detailSearchOffset > maxOffset {
+		m.detailSearchOffset = maxOffset
+	}
+	if m.detailSearchOffset < 0 {
+		m.detailSearchOffset = 0
+	}
+
+	// Window into allLines
+	end := min(m.detailSearchOffset+visibleLines, len(allLines))
+	if m.detailSearchOffset >= len(allLines) {
+		end = len(allLines)
+	}
+	start := min(m.detailSearchOffset, len(allLines))
+	window := allLines[start:end]
+
+	// Pad to fill available space
+	for len(window) < visibleLines {
+		window = append(window, "")
+	}
+
+	result := strings.Join(window, "\n")
+	return result
 }
 
 // ── Header ──────────────────────────────────────────────────────
@@ -343,6 +388,9 @@ func (m *appModel) viewFooter() string {
 		}
 	case StateDetail:
 		hints = []hint{
+			{"↑↓/jk", "scroll"},
+			{"/", "search"},
+			{"d", "detail"},
 			{"esc", "back"},
 			{"q", "quit"},
 		}

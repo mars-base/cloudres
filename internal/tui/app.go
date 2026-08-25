@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -130,6 +131,7 @@ func (m *appModel) selectResourceType(rtype string) tea.Cmd {
 // visibleResources returns m.resources filtered by the active `/` filter
 // (case-insensitive substring match against every displayed column), or
 // the full list when no filter is set.
+// For ACL resources, the filter also matches against IP entries in RawJSON.
 func (m *appModel) visibleResources() []core.Resource {
 	if m.filterInput == "" {
 		return m.resources
@@ -137,12 +139,32 @@ func (m *appModel) visibleResources() []core.Resource {
 	q := strings.ToLower(m.filterInput)
 	filtered := make([]core.Resource, 0, len(m.resources))
 	for _, r := range m.resources {
-		for _, v := range r.Row() {
-			if strings.Contains(strings.ToLower(v), q) {
-				filtered = append(filtered, r)
-				break
-			}
+		if m.matchResource(r, q) {
+			filtered = append(filtered, r)
 		}
 	}
 	return filtered
+}
+
+func (m *appModel) matchResource(r core.Resource, q string) bool {
+	// Standard: match any displayed column
+	for _, v := range r.Row() {
+		if strings.Contains(strings.ToLower(v), q) {
+			return true
+		}
+	}
+	// ACL-specific: also match IP entries
+	if r.ResourceType == "acl" {
+		var d struct {
+			IPs []string `json:"ips"`
+		}
+		if json.Unmarshal([]byte(r.RawJSON), &d) == nil {
+			for _, ip := range d.IPs {
+				if strings.Contains(ip, q) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

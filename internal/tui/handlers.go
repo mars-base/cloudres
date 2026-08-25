@@ -113,14 +113,58 @@ func (m *appModel) handleMainKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // ── Detail ─────────────────────────────────────────────────────
 
 func (m *appModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// If in search-input mode, handle search keystrokes
+	if m.detailSearchMode {
+		return m.handleDetailSearchKey(msg)
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Back), key.Matches(msg, m.keys.Detail):
 		m.state = StateMain
+		m.detailSearchInput = ""
+		m.detailSearchOffset = 0
+		return m, nil
+	case key.Matches(msg, m.keys.Filter):
+		m.detailSearchMode = true
+		return m, nil
+	case key.Matches(msg, m.keys.Up):
+		if m.detailSearchOffset > 0 {
+			m.detailSearchOffset--
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Down):
+		m.detailSearchOffset++
 		return m, nil
 	}
 	return m, nil
+}
+
+// handleDetailSearchKey processes keys when the user is typing a `/` search
+// query inside the detail view.
+func (m *appModel) handleDetailSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.detailSearchMode = false
+		return m, nil
+	case "esc":
+		m.detailSearchMode = false
+		m.detailSearchInput = ""
+		m.detailSearchOffset = 0
+		return m, nil
+	case "backspace":
+		if len(m.detailSearchInput) > 0 {
+			m.detailSearchInput = m.detailSearchInput[:len(m.detailSearchInput)-1]
+		}
+		return m, nil
+	default:
+		s := msg.String()
+		if len(s) == 1 {
+			m.detailSearchInput += s
+		}
+		return m, nil
+	}
 }
 
 // ── Command Mode ───────────────────────────────────────────────

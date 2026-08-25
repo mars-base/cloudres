@@ -51,6 +51,11 @@ type appModel struct {
 	filterMode  bool
 	filterInput string
 
+	// Detail search — `/` in detail view filters key-value lines
+	detailSearchMode  bool
+	detailSearchInput string
+	detailSearchOffset int
+
 	// Lower table navigation
 	cursor int
 	offset int // scroll offset

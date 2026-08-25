@@ -29,6 +29,7 @@ var resourceTypeLabels = map[string]map[string]string{
 		"cas":         "Certificate (SSL/TLS)",
 		"ack":         "Container Service (ACK)",
 		"acr":         "Container Registry (ACR)",
+		"acl":         "Access Control List (ACL)",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",
