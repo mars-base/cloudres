@@ -30,6 +30,7 @@ var resourceTypeLabels = map[string]map[string]string{
 		"ack":         "Container Service (ACK)",
 		"acr":         "Container Registry (ACR)",
 		"acl":         "Access Control List (ACL)",
+		"kfk":         "Message Queue for Kafka",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",

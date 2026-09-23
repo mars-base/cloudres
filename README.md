@@ -50,6 +50,7 @@ an interactive terminal UI for browsing resources across regions.
 | `ack` | Container Service (ACK) | Cluster ID, name, state, version, node count, region |
 | `acr` | Container Registry (ACR) | Instance ID, name, specification, namespace count, repository count, ACL entries |
 | `acl` | Access Control List | ACL ID, name, IP entries, bound ALBs, listener count |
+| `kfk` | Message Queue for Kafka | Instance ID, name, series, topics, SASL users, consumer groups, ACLs, config params |
 
 ### Resource Types (Huawei Cloud)
 
@@ -151,6 +152,9 @@ cloudres aliyun acr
 
 # Access Control Lists (IP whitelist/blacklist for ALB)
 cloudres aliyun acl --region cn-hangzhou
+
+# Message Queue for Kafka (instances with topics, SASL users, ACLs)
+cloudres aliyun kfk --profile l145 --sync
 
 # Huawei Cloud
 cloudres huawei ecs --sync

@@ -94,6 +94,8 @@ func Columns(provider, resourceType string) []string {
 		return []string{"ID", "Name", "Status", "Spec", "Region", "NS", "Repos", "ACL", "Created"}
 	case "acl":
 		return []string{"ID", "Name", "Status", "IPs", "ALBs", "Listeners", "Created"}
+	case "kfk":
+		return []string{"ID", "Name", "Status", "Series", "Topics", "Groups", "SASL", "ACLs", "Region", "Created"}
 	default:
 		return []string{"ID", "Name", "Status", "Region"}
 	}
@@ -149,6 +151,8 @@ func (r Resource) Detail() [][2]string {
 		return r.acrDetail()
 	case "acl":
 		return r.aclDetail()
+	case "kfk":
+		return r.kafkaDetail()
 	default:
 		return [][2]string{
 			{"ID", r.ResourceID},
@@ -209,6 +213,8 @@ func (r Resource) Row() []string {
 		return r.acrRow()
 	case "acl":
 		return r.aclRow()
+	case "kfk":
+		return r.kafkaRow()
 	default:
 		return []string{r.ResourceID, r.ResourceName, r.Status, r.Region}
 	}

@@ -1263,3 +1263,111 @@ func (r Resource) aclDetail() [][2]string {
 	}
 	return pairs
 }
+
+// ── Kafka (Message Queue) ───────────────────────────────────────────────
+
+func (r Resource) kafkaRow() []string {
+	var d struct {
+		Series        string `json:"Series"`
+		CreateTime    int64  `json:"CreateTime"`
+		Topics        []any  `json:"topics"`
+		ConsumerGroup []any  `json:"consumer_groups"`
+		SASLUsers     []any  `json:"sasl_users"`
+		ACLs          []any  `json:"acls"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	return []string{
+		r.ResourceID, r.ResourceName, r.Status, d.Series,
+		itoa(len(d.Topics)), itoa(len(d.ConsumerGroup)),
+		itoa(len(d.SASLUsers)), itoa(len(d.ACLs)),
+		r.Region, formatMillis(d.CreateTime),
+	}
+}
+
+func (r Resource) kafkaDetail() [][2]string {
+	var d struct {
+		InstanceID      string            `json:"InstanceId"`
+		Name            string            `json:"Name"`
+		RegionID        string            `json:"RegionId"`
+		SpecType        string            `json:"SpecType"`
+		Series          string            `json:"Series"`
+		VpcID           string            `json:"VpcId"`
+		SecurityGroup   string            `json:"SecurityGroup"`
+		StandardZoneID  string            `json:"StandardZoneId"`
+		CreateTime      int64             `json:"CreateTime"`
+		ExpiredTime     int64             `json:"ExpiredTime"`
+		DomainEndpoint  string            `json:"DomainEndpoint"`
+		SaslEndPoint    string            `json:"SaslEndPoint"`
+		MsgRetain       int               `json:"MsgRetain"`
+		AllConfigMap    map[string]string `json:"all_config"`
+		Topics          []struct {
+			Topic        string `json:"Topic"`
+			PartitionNum int    `json:"PartitionNum"`
+			AutoCreate   bool   `json:"AutoCreate"`
+		} `json:"topics"`
+		SASLUsers []struct {
+			Username  string `json:"Username"`
+			Type      string `json:"Type"`
+			Mechanism string `json:"Mechanism"`
+		} `json:"sasl_users"`
+		ConsumerGroup []struct {
+			ConsumerGroup string `json:"ConsumerGroup"`
+			Remark        string `json:"Remark"`
+		} `json:"consumer_groups"`
+		ACLs []struct {
+			Username          string `json:"Username"`
+			AclResourceType   string `json:"AclResourceType"`
+			AclResourceName   string `json:"AclResourceName"`
+			AclOperationType  string `json:"AclOperationType"`
+			AclPermissionType string `json:"AclPermissionType"`
+		} `json:"acls"`
+	}
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+
+	pairs := [][2]string{
+		{"ID", d.InstanceID},
+		{"Name", d.Name},
+		{"Region", d.RegionID},
+		{"Status", r.Status},
+		{"Series", d.Series},
+		{"Spec", d.SpecType},
+		{"VPC", d.VpcID},
+		{"SecurityGroup", d.SecurityGroup},
+		{"Zone", d.StandardZoneID},
+		{"MsgRetain(h)", itoa(d.MsgRetain)},
+		{"Endpoint", d.DomainEndpoint},
+		{"SASLEndpoint", d.SaslEndPoint},
+		{"Created", formatMillis(d.CreateTime)},
+	}
+
+	// Config parameters (enable.acl, auto.create.topics.enable, ...)
+	for k, v := range d.AllConfigMap {
+		pairs = append(pairs, [2]string{"Config:" + k, v})
+	}
+
+	// Topics
+	for _, t := range d.Topics {
+		auto := "no"
+		if t.AutoCreate {
+			auto = "yes"
+		}
+		pairs = append(pairs, [2]string{"Topic", fmt.Sprintf("%s  partitions=%d  autocreate=%s", t.Topic, t.PartitionNum, auto)})
+	}
+
+	// SASL users
+	for _, u := range d.SASLUsers {
+		pairs = append(pairs, [2]string{"SASL", fmt.Sprintf("%s  (%s/%s)", u.Username, u.Type, u.Mechanism)})
+	}
+
+	// Consumer groups
+	for _, c := range d.ConsumerGroup {
+		pairs = append(pairs, [2]string{"Group", c.ConsumerGroup})
+	}
+
+	// ACLs
+	for _, a := range d.ACLs {
+		pairs = append(pairs, [2]string{"ACL", fmt.Sprintf("%s  %s %s  %s/%s", a.Username, a.AclPermissionType, a.AclOperationType, a.AclResourceType, a.AclResourceName)})
+	}
+
+	return pairs
+}
