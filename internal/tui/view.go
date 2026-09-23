@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mattn/go-runewidth"
 	"github.com/mars-base/cloudres/internal/core"
+	"github.com/mattn/go-runewidth"
 )
 
 // toLines splits a string into lines, ignoring a single trailing \n.
@@ -288,9 +288,76 @@ func (m *appModel) viewDetail() string {
 	return m.fitToHeight(header, upper, separator, detail, footer)
 }
 
+// wrapValue breaks a long value into lines no wider than maxWidth.
+// It prefers to break right after a comma (endpoint lists, IP lists);
+// comma-free chunks are hard-broken at the width limit.
+func wrapValue(value string, maxWidth int) []string {
+	if maxWidth < 8 {
+		maxWidth = 8
+	}
+	rs := []rune(value)
+	var lines []string
+	cur := ""
+	i := 0
+	for i < len(rs) {
+		end := i
+		width := runewidth.StringWidth(cur)
+		for end < len(rs) && width+runewidth.RuneWidth(rs[end]) <= maxWidth {
+			width += runewidth.RuneWidth(rs[end])
+			end++
+		}
+		if end >= len(rs) {
+			cur += string(rs[i:])
+			break
+		}
+		// Prefer breaking after the last comma inside the fitted window.
+		breakAt := -1
+		for j := end - 1; j > i; j-- {
+			if rs[j] == ',' {
+				breakAt = j + 1
+				break
+			}
+		}
+		if breakAt <= i {
+			// No comma in the window: break after the next comma beyond it
+			// (allow mild overflow) so comma-separated lists stay readable.
+			w := end - i
+			for j := end; j < len(rs) && w <= maxWidth+maxWidth/2; j, w = j+1, w+runewidth.RuneWidth(rs[j]) {
+				if rs[j] == ',' {
+					breakAt = j + 1
+					break
+				}
+			}
+		}
+		if breakAt > i {
+			cur += string(rs[i:breakAt])
+			lines = append(lines, cur)
+			cur = ""
+			i = breakAt
+			for i < len(rs) && rs[i] == ' ' {
+				i++
+			}
+		} else {
+			cur += string(rs[i:end])
+			lines = append(lines, cur)
+			cur = ""
+			i = end
+		}
+	}
+	if cur != "" {
+		lines = append(lines, cur)
+	}
+	if len(lines) == 0 {
+		lines = []string{""}
+	}
+	return lines
+}
+
 // renderDetailPanel renders the selected resource's key-value detail,
 // in place of the lower panel's resource table.
-// Supports scrolling (↑↓) and search (`/` + query).
+// Supports scrolling (↑↓) and search (`/` + query). The title line and any
+// pinned lines from DetailFixed() (e.g. Kafka's config block) stay fixed
+// below the title; only the Detail() content scrolls beneath them.
 func (m *appModel) renderDetailPanel(availableHeight int) string {
 	resources := m.visibleResources()
 	if m.cursor >= len(resources) {
@@ -300,11 +367,67 @@ func (m *appModel) renderDetailPanel(availableHeight int) string {
 	r := resources[m.cursor]
 	details := r.Detail()
 
-	// Build all lines first (before search filtering)
-	var allLines []string
-	allLines = append(allLines, "  "+colHeaderStyle.Render("── Resource Detail ──"))
-	allLines = append(allLines, "")
+	title := "  " + colHeaderStyle.Render("── Resource Detail ──")
 
+	// renderKVBlock lays out key-value pairs as lines of the form
+	// "  <label padded to labelField>  <value>". The label field is sized
+	// to the widest label in the block (min 24, matching labelStyle.Width)
+	// so values stay column-aligned even when a block contains long labels
+	// like Kafka's "Config:auto.create.topics.enable". Wrapped continuation
+	// lines align to the same value column.
+	renderKVBlock := func(pairs [][2]string) []string {
+		if len(pairs) == 0 {
+			return nil
+		}
+		labelField := 24
+		for _, kv := range pairs {
+			if lw := runewidth.StringWidth(kv[0]); lw > labelField {
+				labelField = lw
+			}
+		}
+		valueCol := 2 + labelField + 2
+		valueWidth := max(8, m.width-valueCol-2)
+		contIndent := strings.Repeat(" ", valueCol)
+
+		// When any label exceeds the standard gutter, pad every label in
+		// this block to labelField with labelWideStyle (labelStyle.Width(24)
+		// would keep short labels at 24 and misalign values against the
+		// long ones). Pad the raw text before styling: runewidth can't
+		// measure ANSI-styled strings, so padding after Render miscounts.
+		labelStyleForBlock := labelStyle
+		if labelField > 24 {
+			labelStyleForBlock = labelWideStyle
+		}
+
+		var lines []string
+		for _, kv := range pairs {
+			text := kv[0]
+			if lw := runewidth.StringWidth(text); labelField > lw {
+				text += strings.Repeat(" ", labelField-lw)
+			}
+			label := "  " + labelStyleForBlock.Render(text)
+
+			if kv[1] == "" {
+				lines = append(lines, label+"  "+dimStyle.Render("-"))
+				continue
+			}
+			for idx, seg := range wrapValue(kv[1], valueWidth) {
+				if idx == 0 {
+					lines = append(lines, label+"  "+valueStyle.Render(seg))
+				} else {
+					lines = append(lines, contIndent+valueStyle.Render(seg))
+				}
+			}
+		}
+		return lines
+	}
+
+	// Fixed block: always visible under the title, not scrolled, not filtered.
+	fixedPairs := r.DetailFixed()
+	fixed := renderKVBlock(fixedPairs)
+
+	// Scrollable content (after search filtering)
+	var filtered [][2]string
 	q := strings.ToLower(m.detailSearchInput)
 	for _, kv := range details {
 		// If search is active, skip non-matching lines
@@ -313,26 +436,32 @@ func (m *appModel) renderDetailPanel(availableHeight int) string {
 				continue
 			}
 		}
-		label := labelStyle.Render(kv[0])
-		value := kv[1]
-		if value == "" {
-			value = dimStyle.Render("-")
-		} else {
-			value = valueStyle.Render(value)
-		}
-		allLines = append(allLines, "  "+label+"  "+value)
+		filtered = append(filtered, kv)
 	}
+	content := renderKVBlock(filtered)
 
-	// Scrollable: clamp offset and window into availableHeight
-	// Reserve 1 line for search bar if in search mode or search is active
-	reservedFooter := 0
+	// Reserve 1 line for search bar if in search mode or search is active.
+	searchReserved := 0
 	if m.detailSearchMode || m.detailSearchInput != "" {
-		reservedFooter = 1
+		searchReserved = 1
 	}
-	visibleLines := max(1, availableHeight-reservedFooter)
+	reserved := 1 + len(fixed) + searchReserved // title + fixed block
+
+	// On short terminals the fixed block alone can consume every line,
+	// pushing the scroll window below the panel's budget — fitToHeight then
+	// truncates it away and j/k can never reach the bottom. Fold the fixed
+	// pairs into the scrollable content in that case (re-rendered as one
+	// block, so label/value alignment stays uniform); on normal heights the
+	// block remains pinned.
+	if reserved+1 > availableHeight {
+		fixed = nil
+		reserved = 1 + searchReserved
+		content = renderKVBlock(append(fixedPairs, filtered...))
+	}
+	visibleLines := max(1, availableHeight-reserved)
 
 	// Clamp offset
-	maxOffset := max(0, len(allLines)-visibleLines)
+	maxOffset := max(0, len(content)-visibleLines)
 	if m.detailSearchOffset > maxOffset {
 		m.detailSearchOffset = maxOffset
 	}
@@ -340,21 +469,17 @@ func (m *appModel) renderDetailPanel(availableHeight int) string {
 		m.detailSearchOffset = 0
 	}
 
-	// Window into allLines
-	end := min(m.detailSearchOffset+visibleLines, len(allLines))
-	if m.detailSearchOffset >= len(allLines) {
-		end = len(allLines)
-	}
-	start := min(m.detailSearchOffset, len(allLines))
-	window := allLines[start:end]
+	end := min(m.detailSearchOffset+visibleLines, len(content))
+	start := min(m.detailSearchOffset, len(content))
+	window := content[start:end]
 
 	// Pad to fill available space
 	for len(window) < visibleLines {
 		window = append(window, "")
 	}
 
-	result := strings.Join(window, "\n")
-	return result
+	lines := append([]string{title}, fixed...)
+	return strings.Join(append(lines, window...), "\n")
 }
 
 // ── Header ──────────────────────────────────────────────────────

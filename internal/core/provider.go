@@ -163,6 +163,22 @@ func (r Resource) Detail() [][2]string {
 	}
 }
 
+// DetailFixed returns key-value pairs that should stay pinned (always
+// visible, never scrolled away) at the top of the detail view, above the
+// scrollable Detail() content. Most resources have none; Kafka pins its
+// identity + config parameters here so long Config blocks stay readable.
+func (r Resource) DetailFixed() [][2]string {
+	if r.Provider == "huawei" {
+		return nil
+	}
+	switch r.ResourceType {
+	case "kfk":
+		return r.kafkaDetailFixed()
+	default:
+		return nil
+	}
+}
+
 // Row extracts display columns from a Resource as strings.
 func (r Resource) Row() []string {
 	if r.Provider == "huawei" {

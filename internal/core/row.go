@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -174,18 +175,18 @@ func (r Resource) essRow() []string {
 
 func (r Resource) ecsDetail() [][2]string {
 	var d struct {
-		InstanceType      string `json:"InstanceType"`
-		Cpu               int    `json:"Cpu"`
-		Memory            int    `json:"Memory"`
-		ZoneId            string `json:"ZoneId"`
-		OSName            string `json:"OSName"`
-		CreationTime      string `json:"CreationTime"`
-		ExpiredTime       string `json:"ExpiredTime"`
-		AutoRenewEnabled  bool   `json:"AutoRenewEnabled"`
-		RenewalStatus     string `json:"RenewalStatus"`
-		Duration          int    `json:"Duration"`
-		PeriodUnit        string `json:"PeriodUnit"`
-		VpcAttributes     struct {
+		InstanceType     string `json:"InstanceType"`
+		Cpu              int    `json:"Cpu"`
+		Memory           int    `json:"Memory"`
+		ZoneId           string `json:"ZoneId"`
+		OSName           string `json:"OSName"`
+		CreationTime     string `json:"CreationTime"`
+		ExpiredTime      string `json:"ExpiredTime"`
+		AutoRenewEnabled bool   `json:"AutoRenewEnabled"`
+		RenewalStatus    string `json:"RenewalStatus"`
+		Duration         int    `json:"Duration"`
+		PeriodUnit       string `json:"PeriodUnit"`
+		VpcAttributes    struct {
 			PrivateIpAddress struct {
 				IpAddress []string `json:"IpAddress"`
 			} `json:"PrivateIpAddress"`
@@ -994,14 +995,14 @@ func (r Resource) armsAlertRow() []string {
 
 func (r Resource) armsAlertDetail() [][2]string {
 	var d struct {
-		AlertLevel string   `json:"AlertLevel"`
-		AlertType  int      `json:"AlertType"`
-		AlertWays  []string `json:"AlertWays"`
-		RegionID   string   `json:"RegionId"`
-		CreateTime int64    `json:"CreateTime"`
-		UpdateTime int64    `json:"UpdateTime"`
-		HostByAlertManager bool `json:"HostByAlertManager"`
-		AlertRule struct {
+		AlertLevel         string   `json:"AlertLevel"`
+		AlertType          int      `json:"AlertType"`
+		AlertWays          []string `json:"AlertWays"`
+		RegionID           string   `json:"RegionId"`
+		CreateTime         int64    `json:"CreateTime"`
+		UpdateTime         int64    `json:"UpdateTime"`
+		HostByAlertManager bool     `json:"HostByAlertManager"`
+		AlertRule          struct {
 			Operator string `json:"Operator"`
 			Rules    []struct {
 				Measure  string  `json:"Measure"`
@@ -1285,44 +1286,7 @@ func (r Resource) kafkaRow() []string {
 }
 
 func (r Resource) kafkaDetail() [][2]string {
-	var d struct {
-		InstanceID      string            `json:"InstanceId"`
-		Name            string            `json:"Name"`
-		RegionID        string            `json:"RegionId"`
-		SpecType        string            `json:"SpecType"`
-		Series          string            `json:"Series"`
-		VpcID           string            `json:"VpcId"`
-		SecurityGroup   string            `json:"SecurityGroup"`
-		StandardZoneID  string            `json:"StandardZoneId"`
-		CreateTime      int64             `json:"CreateTime"`
-		ExpiredTime     int64             `json:"ExpiredTime"`
-		DomainEndpoint  string            `json:"DomainEndpoint"`
-		SaslEndPoint    string            `json:"SaslEndPoint"`
-		MsgRetain       int               `json:"MsgRetain"`
-		AllConfigMap    map[string]string `json:"all_config"`
-		Topics          []struct {
-			Topic        string `json:"Topic"`
-			PartitionNum int    `json:"PartitionNum"`
-			AutoCreate   bool   `json:"AutoCreate"`
-		} `json:"topics"`
-		SASLUsers []struct {
-			Username  string `json:"Username"`
-			Type      string `json:"Type"`
-			Mechanism string `json:"Mechanism"`
-		} `json:"sasl_users"`
-		ConsumerGroup []struct {
-			ConsumerGroup string `json:"ConsumerGroup"`
-			Remark        string `json:"Remark"`
-		} `json:"consumer_groups"`
-		ACLs []struct {
-			Username          string `json:"Username"`
-			AclResourceType   string `json:"AclResourceType"`
-			AclResourceName   string `json:"AclResourceName"`
-			AclOperationType  string `json:"AclOperationType"`
-			AclPermissionType string `json:"AclPermissionType"`
-		} `json:"acls"`
-	}
-	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+	d := r.parseKafka()
 
 	pairs := [][2]string{
 		{"ID", d.InstanceID},
@@ -1338,11 +1302,6 @@ func (r Resource) kafkaDetail() [][2]string {
 		{"Endpoint", d.DomainEndpoint},
 		{"SASLEndpoint", d.SaslEndPoint},
 		{"Created", formatMillis(d.CreateTime)},
-	}
-
-	// Config parameters (enable.acl, auto.create.topics.enable, ...)
-	for k, v := range d.AllConfigMap {
-		pairs = append(pairs, [2]string{"Config:" + k, v})
 	}
 
 	// Topics
@@ -1370,4 +1329,76 @@ func (r Resource) kafkaDetail() [][2]string {
 	}
 
 	return pairs
+}
+
+// kafkaDetailFixed pins the Kafka configuration parameters so they stay
+// visible while the (potentially long) topic/user/ACL lists scroll. Config
+// keys are long (e.g. auto.create.topics.enable), so the renderer gives each
+// a full-width line rather than squeezing it into the 24-col label gutter.
+func (r Resource) kafkaDetailFixed() [][2]string {
+	d := r.parseKafka()
+
+	var pairs [][2]string
+	for _, k := range d.AllConfigKeys {
+		pairs = append(pairs, [2]string{"Config:" + k, d.AllConfig[k]})
+	}
+
+	return pairs
+}
+
+// kafkaView is the decoded shape of a Kafka instance's RawJSON. AllConfigKeys
+// is derived (sorted) after unmarshal, so it carries no json tag.
+type kafkaView struct {
+	InstanceID     string            `json:"InstanceId"`
+	Name           string            `json:"Name"`
+	RegionID       string            `json:"RegionId"`
+	SpecType       string            `json:"SpecType"`
+	Series         string            `json:"Series"`
+	VpcID          string            `json:"VpcId"`
+	SecurityGroup  string            `json:"SecurityGroup"`
+	StandardZoneID string            `json:"StandardZoneId"`
+	CreateTime     int64             `json:"CreateTime"`
+	ExpiredTime    int64             `json:"ExpiredTime"`
+	DomainEndpoint string            `json:"DomainEndpoint"`
+	SaslEndPoint   string            `json:"SaslEndPoint"`
+	MsgRetain      int               `json:"MsgRetain"`
+	AllConfig      map[string]string `json:"all_config"`
+	AllConfigKeys  []string
+	Topics         []struct {
+		Topic        string `json:"Topic"`
+		PartitionNum int    `json:"PartitionNum"`
+		AutoCreate   bool   `json:"AutoCreate"`
+	} `json:"topics"`
+	SASLUsers []struct {
+		Username  string `json:"Username"`
+		Type      string `json:"Type"`
+		Mechanism string `json:"Mechanism"`
+	} `json:"sasl_users"`
+	ConsumerGroup []struct {
+		ConsumerGroup string `json:"ConsumerGroup"`
+		Remark        string `json:"Remark"`
+	} `json:"consumer_groups"`
+	ACLs []struct {
+		Username          string `json:"Username"`
+		AclResourceType   string `json:"AclResourceType"`
+		AclResourceName   string `json:"AclResourceName"`
+		AclOperationType  string `json:"AclOperationType"`
+		AclPermissionType string `json:"AclPermissionType"`
+	} `json:"acls"`
+}
+
+// parseKafka decodes the RawJSON of a Kafka instance resource.
+func (r Resource) parseKafka() kafkaView {
+	var d kafkaView
+	_ = json.Unmarshal([]byte(r.RawJSON), &d)
+
+	// Sort config keys for stable display.
+	keys := make([]string, 0, len(d.AllConfig))
+	for k := range d.AllConfig {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	d.AllConfigKeys = keys
+
+	return d
 }

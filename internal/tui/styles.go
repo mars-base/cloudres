@@ -62,6 +62,13 @@ var (
 			Foreground(lipgloss.Color("#7aa2f7")).
 			Width(24)
 
+	// labelWideStyle is for labels longer than labelStyle's 24-col gutter
+	// (e.g. Kafka "Config:auto.create.topics.enable"). Unlike labelStyle it
+	// sets no Width, so lipgloss won't soft-wrap them into extra physical
+	// lines — the detail panel's line budget must match what's rendered.
+	labelWideStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#7aa2f7"))
+
 	// Value in detail view
 	valueStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#c0caf5"))
