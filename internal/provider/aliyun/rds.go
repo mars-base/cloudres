@@ -64,6 +64,16 @@ type rdsResourceUsage struct {
 	LogSize    int64 `json:"LogSize"`
 }
 
+// rdsIPArray mirrors one whitelist group from DescribeDBInstanceIPArrayList:
+// the group name plus its comma-separated IP/CIDR list.
+type rdsIPArray struct {
+	DBInstanceIPArrayName      string `json:"DBInstanceIPArrayName"`
+	DBInstanceIPArrayAttribute string `json:"DBInstanceIPArrayAttribute"`
+	SecurityIPType             string `json:"SecurityIPType"`
+	SecurityIPList             string `json:"SecurityIPList"`
+	WhitelistNetworkType       string `json:"WhitelistNetworkType"`
+}
+
 // rdsPageSize is the page size requested per DescribeDBInstances call.
 // Without paging, accounts with more instances than the API's default
 // page size would silently lose results.
@@ -100,16 +110,25 @@ func fetchRDSRegion(ctx context.Context, p *core.Provider, region string) ([]cor
 				usage = &rdsResourceUsage{}
 			}
 
+			ipArrays, err := fetchRDSIPArrayList(ctx, p, inst.DBInstanceID)
+			if err != nil {
+				// Same best-effort policy as usage: a failed whitelist
+				// lookup just means the detail view shows no groups.
+				ipArrays = nil
+			}
+
 			rawJSON, _ := json.Marshal(struct {
 				rdsInstance
-				DataSize   int64 `json:"DataSize"`
-				DiskUsed   int64 `json:"DiskUsed"`
-				BackupSize int64 `json:"BackupSize"`
+				DataSize    int64        `json:"DataSize"`
+				DiskUsed    int64        `json:"DiskUsed"`
+				BackupSize  int64        `json:"BackupSize"`
+				IPArrayList []rdsIPArray `json:"ip_arrays"`
 			}{
 				rdsInstance: inst,
 				DataSize:    usage.DataSize,
 				DiskUsed:    usage.DiskUsed,
 				BackupSize:  usage.BackupSize,
+				IPArrayList: ipArrays,
 			})
 			allResources = append(allResources, core.Resource{
 				Provider:     "aliyun",
@@ -145,4 +164,22 @@ func fetchRDSResourceUsage(ctx context.Context, p *core.Provider, instanceID str
 		return nil, fmt.Errorf("parse rds resource usage: %w", err)
 	}
 	return &usage, nil
+}
+
+// fetchRDSIPArrayList calls DescribeDBInstanceIPArrayList for a single
+// instance — one extra CLI call per instance, same cost policy as usage.
+func fetchRDSIPArrayList(ctx context.Context, p *core.Provider, instanceID string) ([]rdsIPArray, error) {
+	out, err := runAliyun(ctx, []string{"rds", "DescribeDBInstanceIPArrayList", "--DBInstanceId", instanceID}, p.ActiveProfile)
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		Items struct {
+			DBInstanceIPArray []rdsIPArray `json:"DBInstanceIPArray"`
+		} `json:"Items"`
+	}
+	if err := json.Unmarshal(out, &resp); err != nil {
+		return nil, fmt.Errorf("parse rds ip array list: %w", err)
+	}
+	return resp.Items.DBInstanceIPArray, nil
 }

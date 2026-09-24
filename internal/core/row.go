@@ -291,9 +291,14 @@ func (r Resource) rdsDetail() [][2]string {
 		DataSize              int64  `json:"DataSize"`
 		DiskUsed              int64  `json:"DiskUsed"`
 		BackupSize            int64  `json:"BackupSize"`
+		IPArrayList           []struct {
+			Name  string `json:"DBInstanceIPArrayName"`
+			IPs   string `json:"SecurityIPList"`
+			Attrs string `json:"DBInstanceIPArrayAttribute"`
+		} `json:"ip_arrays"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
-	return [][2]string{
+	pairs := [][2]string{
 		{"ID", r.ResourceID},
 		{"Name", r.ResourceName},
 		{"Status", r.Status},
@@ -312,6 +317,18 @@ func (r Resource) rdsDetail() [][2]string {
 		{"Created", d.CreateTime},
 		{"Expires", d.ExpireTime},
 	}
+
+	// Whitelist (ACL) groups: one line per group, name as label and its
+	// comma-separated IP/CIDR list as the value (wrapped on commas).
+	for _, g := range d.IPArrayList {
+		label := "ACL:" + g.Name
+		if g.Attrs == "hidden" {
+			label += " (hidden)"
+		}
+		pairs = append(pairs, [2]string{label, g.IPs})
+	}
+
+	return pairs
 }
 
 func (r Resource) ossDetail() [][2]string {

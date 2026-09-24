@@ -31,7 +31,7 @@ an interactive terminal UI for browsing resources across regions.
 | `ecs` | Elastic Compute Service | CPU, memory, OS, private/public IP, VPC, zone, auto-renewal (PrePaid) |
 | `vpc` | Virtual Private Cloud | CIDR, IPv6 CIDR |
 | `vsw` | VSwitch (Subnet) | CIDR, zone, VPC |
-| `rds` | Relational Database Service | Engine, class, storage, disk/backup size, endpoint |
+| `rds` | Relational Database Service | Engine, class, storage, disk/backup size, endpoint, whitelist groups (ACL) with IP lists |
 | `tair` | Tair (Redis-compatible) | Type, edition, version, memory usage, quota |
 | `pdb` | PolarDB | Engine, node specs (per-node role/CPU/memory), endpoints, storage |
 | `oss` | Object Storage Service | Storage class |
