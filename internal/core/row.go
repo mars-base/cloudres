@@ -438,6 +438,11 @@ func (r Resource) polarDBDetail() [][2]string {
 			DBNodeClass string `json:"DBNodeClass"`
 			ZoneId      string `json:"ZoneId"`
 		} `json:"DBNodes"`
+		IPArrayList []struct {
+			DBClusterIPArrayName      string `json:"DBClusterIPArrayName"`
+			DBClusterIPArrayAttribute string `json:"DBClusterIPArrayAttribute"`
+			SecurityIps               string `json:"SecurityIps"`
+		} `json:"ip_arrays"`
 	}
 	_ = json.Unmarshal([]byte(r.RawJSON), &d)
 	storageSpace := "-"
@@ -485,6 +490,16 @@ func (r Resource) polarDBDetail() [][2]string {
 		{"Created", d.CreateTime},
 		{"Expires", d.ExpireTime},
 	}...)
+
+	// Whitelist (ACL) groups: one line per group, name as label and its
+	// comma-separated IP/CIDR list as the value (wrapped on commas).
+	for _, g := range d.IPArrayList {
+		label := "ACL:" + g.DBClusterIPArrayName
+		if g.DBClusterIPArrayAttribute == "hidden" {
+			label += " (hidden)"
+		}
+		pairs = append(pairs, [2]string{label, g.SecurityIps})
+	}
 
 	return pairs
 }

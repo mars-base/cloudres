@@ -91,6 +91,15 @@ type polarDBNode struct {
 	ZoneId      string `json:"ZoneId"`
 }
 
+// polarDBIPArray mirrors one whitelist group from
+// DescribeDBClusterAccessWhitelist: the group name plus its
+// comma-separated IP/CIDR list.
+type polarDBIPArray struct {
+	DBClusterIPArrayName      string `json:"DBClusterIPArrayName"`
+	DBClusterIPArrayAttribute string `json:"DBClusterIPArrayAttribute"`
+	SecurityIps               string `json:"SecurityIps"`
+}
+
 func fetchPolarDBRegion(ctx context.Context, p *core.Provider, region string) ([]core.Resource, error) {
 	var allResources []core.Resource
 	now := time.Now()
@@ -128,18 +137,26 @@ func fetchPolarDBRegion(ctx context.Context, p *core.Provider, region string) ([
 				nodes = nil
 			}
 
+			ipArrays, err := fetchPolarDBWhitelist(ctx, p, c.DBClusterID)
+			if err != nil {
+				// Best-effort, same as endpoints.
+				ipArrays = nil
+			}
+
 			rawJSON, _ := json.Marshal(struct {
 				polarDBCluster
-				PrimaryEndpoint       string         `json:"PrimaryEndpoint"`
-				PrimaryEndpointPublic string         `json:"PrimaryEndpointPublic"`
-				ClusterEndpoint       string         `json:"ClusterEndpoint"`
-				DBNodes               []polarDBNode  `json:"DBNodes"`
+				PrimaryEndpoint       string           `json:"PrimaryEndpoint"`
+				PrimaryEndpointPublic string           `json:"PrimaryEndpointPublic"`
+				ClusterEndpoint       string           `json:"ClusterEndpoint"`
+				DBNodes               []polarDBNode    `json:"DBNodes"`
+				IPArrayList           []polarDBIPArray `json:"ip_arrays"`
 			}{
 				polarDBCluster:        c,
 				PrimaryEndpoint:       endpoints.PrimaryEndpoint,
 				PrimaryEndpointPublic: endpoints.PrimaryEndpointPublic,
 				ClusterEndpoint:       endpoints.ClusterEndpoint,
 				DBNodes:               nodes,
+				IPArrayList:           ipArrays,
 			})
 			allResources = append(allResources, core.Resource{
 				Provider:     "aliyun",
@@ -216,4 +233,22 @@ func fetchPolarDBNodes(ctx context.Context, p *core.Provider, clusterID string) 
 		return nil, fmt.Errorf("parse polardb attribute response: %w", err)
 	}
 	return resp.DBNodes, nil
+}
+
+// fetchPolarDBWhitelist calls DescribeDBClusterAccessWhitelist for a single
+// cluster — one extra CLI call per cluster, same cost policy as endpoints.
+func fetchPolarDBWhitelist(ctx context.Context, p *core.Provider, clusterID string) ([]polarDBIPArray, error) {
+	out, err := runAliyun(ctx, []string{"polardb", "DescribeDBClusterAccessWhitelist", "--DBClusterId", clusterID}, p.ActiveProfile)
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		Items struct {
+			DBClusterIPArray []polarDBIPArray `json:"DBClusterIPArray"`
+		} `json:"Items"`
+	}
+	if err := json.Unmarshal(out, &resp); err != nil {
+		return nil, fmt.Errorf("parse polardb access whitelist response: %w", err)
+	}
+	return resp.Items.DBClusterIPArray, nil
 }

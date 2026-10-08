@@ -33,7 +33,7 @@ an interactive terminal UI for browsing resources across regions.
 | `vsw` | VSwitch (Subnet) | CIDR, zone, VPC |
 | `rds` | Relational Database Service | Engine, class, storage, disk/backup size, endpoint, whitelist groups (ACL) with IP lists |
 | `tair` | Tair (Redis-compatible) | Type, edition, version, memory usage, quota |
-| `pdb` | PolarDB | Engine, node specs (per-node role/CPU/memory), endpoints, storage |
+| `pdb` | PolarDB | Engine, node specs (per-node role/CPU/memory), endpoints, storage, whitelist groups (ACL) with IP lists |
 | `oss` | Object Storage Service | Storage class |
 | `slb` | Server Load Balancer (CLB) | Address type, IP, network type, bandwidth, VPC, zone |
 | `alb` | Application Load Balancer | Address type, edition, DNS, VPC |
