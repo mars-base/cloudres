@@ -197,6 +197,26 @@ func (d *ckView) ckCapacity() (perNodeGB, totalGB int64, nodes int) {
 	return perNodeGB, totalGB, nodes
 }
 
+// ckShardCount counts distinct shards from the node topology, falling back to
+// the cluster's DBNodeCount (the API's node-group count, i.e. shards).
+func (d *ckView) ckShardCount() int {
+	seen := make(map[string]bool)
+	if d.Nodes != nil {
+		for _, n := range d.Nodes.NodeInfos {
+			if n.ShardID != "" {
+				seen[n.ShardID] = true
+			}
+		}
+	}
+	if len(seen) > 0 {
+		return len(seen)
+	}
+	if d.Attribute != nil && d.Attribute.DBNodeCount > 0 {
+		return d.Attribute.DBNodeCount
+	}
+	return d.DBNodeCount
+}
+
 func ckDiskLabel(m *ckMetricsView) string {
 	if m == nil || m.DiskUsagePct == nil {
 		return "-"
@@ -352,6 +372,7 @@ func (d *ckView) ckCommunityDetail(r Resource) [][2]string {
 		[2]string{"Cluster Type", attr.DBClusterType},
 		[2]string{"Node Class", d.DBNodeClass},
 		[2]string{"ZooKeeper Class", attr.ZookeeperClass},
+		[2]string{"Shards", itoa(d.ckShardCount())},
 		[2]string{"Nodes", itoa(nodes)},
 		[2]string{"Storage / Node", fmt.Sprintf("%dGB", perNode)},
 		[2]string{"Total Storage", fmt.Sprintf("%dGB", total)},
