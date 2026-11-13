@@ -51,6 +51,7 @@ an interactive terminal UI for browsing resources across regions.
 | `acr` | Container Registry (ACR) | Instance ID, name, specification, namespace count, repository count, ACL entries |
 | `acl` | Access Control List | ACL ID, name, IP entries, bound ALBs, listener count |
 | `kfk` | Message Queue for Kafka | Instance ID, name, series, topics, SASL users, consumer groups, ACLs, config params |
+| `ck` | ClickHouse | Enterprise & community-compatible editions: architecture, node count, per-node/total storage, disk/CPU usage, endpoints, whitelist groups (ACL), accounts, backup policy |
 
 ### Resource Types (Huawei Cloud)
 
@@ -155,6 +156,9 @@ cloudres aliyun acl --region cn-hangzhou
 
 # Message Queue for Kafka (instances with topics, SASL users, ACLs)
 cloudres aliyun kfk --profile l145 --sync
+
+# ClickHouse (enterprise + community-compatible editions)
+cloudres aliyun ck --profile blz-p-ntes-web --sync
 
 # Huawei Cloud
 cloudres huawei ecs --sync
