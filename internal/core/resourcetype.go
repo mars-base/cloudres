@@ -32,6 +32,7 @@ var resourceTypeLabels = map[string]map[string]string{
 		"acl":         "Access Control List (ACL)",
 		"kfk":         "Message Queue for Kafka",
 		"ck":          "ClickHouse",
+		"prom":        "Prometheus (ARMS)",
 	},
 	"huawei": {
 		"ecs":    "弹性云服务器 (ECS)",

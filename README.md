@@ -52,6 +52,7 @@ an interactive terminal UI for browsing resources across regions.
 | `acl` | Access Control List | ACL ID, name, IP entries, bound ALBs, listener count |
 | `kfk` | Message Queue for Kafka | Instance ID, name, series, topics, SASL users, consumer groups, ACLs, config params |
 | `ck` | ClickHouse | Enterprise & community-compatible editions: architecture, node count, per-node/total storage, disk/CPU usage, endpoints, whitelist groups (ACL), accounts, backup policy |
+| `prom` | Prometheus (ARMS) | Type, pay method, Grafana instance, storage/archive days, auth settings, remote write/read, push gateway, OpenTelemetry, HTTP API endpoints (public + VPC) |
 
 ### Resource Types (Huawei Cloud)
 
@@ -159,6 +160,9 @@ cloudres aliyun kfk --profile l145 --sync
 
 # ClickHouse (enterprise + community-compatible editions)
 cloudres aliyun ck --profile blz-p-ntes-web --sync
+
+# ARMS Prometheus instances (with API endpoints and storage duration)
+cloudres aliyun prom --profile blz-p-ntes-web --sync
 
 # Huawei Cloud
 cloudres huawei ecs --sync
