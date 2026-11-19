@@ -271,6 +271,25 @@ type ProviderDetector interface {
 	Fetchers() []ResourceFetcher
 }
 
+// RegionOption is one entry in a provider's static region catalog.
+type RegionOption struct {
+	ID   string
+	Name string // localized display name, may be empty
+}
+
+// RegionSupport is optionally implemented by a ProviderDetector whose
+// resource queries need an explicit region. Providers that do not implement
+// it (currently Huawei) keep their existing behavior.
+type RegionSupport interface {
+	// RegionOptions returns the provider's static region catalog.
+	RegionOptions() []RegionOption
+	// RequiresRegion reports whether the resource type is queried per region.
+	RequiresRegion(resourceType string) bool
+	// SetRegion pins the endpoint region for subsequent CLI calls; an empty
+	// value falls back to the provider's built-in default region.
+	SetRegion(region string)
+}
+
 // ResourceFetcher fetches resources of a specific type from a provider.
 type ResourceFetcher interface {
 	ResourceType() string

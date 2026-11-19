@@ -212,6 +212,21 @@ Notes:
   (`<profile>@<hash>`), so it never mixes with rows synced from the default
   config file.
 
+### Profiles without a region
+
+If an Aliyun profile has no `region_id`, region-scoped commands (`ecs`, `vpc`,
+`vsw`, `rds`, `tair`, `pdb`, `slb`, `alb`, `nlb`, `ess`, `cas`, `ack`, `acl`,
+`kfk`, `ck`, `prom`) do not query anything. Instead they print a warning that
+includes the built-in region list and exit successfully; pass `--region` to
+query a specific region:
+
+```bash
+cloudres aliyun ecs --region cn-hangzhou
+```
+
+Global resource types (`oss`, `ram`, `acr`, `cms-*`, `arms-*`) work without a
+region.
+
 ### Show version
 
 ```bash
@@ -229,6 +244,17 @@ cloudres version
 | `:` | Enter command mode |
 | `q` | Quit |
 
+### Region Select (`StateRegionSelect`)
+
+Shown when an Aliyun profile has no `region_id`: pick a region to continue.
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` / `j` / `k` | Navigate |
+| `Enter` | Select region and enter the main view |
+| `Esc` | Back to provider select |
+| `q` | Quit |
+
 ### Main View (`StateMain`)
 
 | Key | Action |
@@ -238,7 +264,7 @@ cloudres version
 | `:` | Command mode — type a resource type (e.g. `ecs`, `subnet`) |
 | `/` | Filter resources (case-insensitive substring search across all columns) |
 | `d` | View resource detail |
-| `Esc` | Go back (clear filter → clear resource type → provider select) |
+| `Esc` | Go back (clear filter → clear resource type → region selection → provider select) |
 | `q` | Quit |
 
 ### Detail View (`StateDetail`)

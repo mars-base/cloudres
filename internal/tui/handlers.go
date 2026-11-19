@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mars-base/cloudres/internal/core"
 )
 
 // ── Provider Select ────────────────────────────────────────────
@@ -38,6 +39,44 @@ func (m *appModel) handleProviderSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+// ── Region Select ──────────────────────────────────────────────
+
+func (m *appModel) handleRegionSelectKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+	case key.Matches(msg, m.keys.Back):
+		m.pendingProvider = nil
+		m.pendingProfile = ""
+		m.regionOptions = nil
+		m.cursor = 0
+		m.offset = 0
+		m.state = StateProviderSelect
+		return m, nil
+	case key.Matches(msg, m.keys.Up):
+		if m.cursor > 0 {
+			m.cursor--
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Down):
+		if m.cursor < len(m.regionOptions)-1 {
+			m.cursor++
+		}
+		return m, nil
+	}
+
+	if msg.String() == "enter" && m.pendingProvider != nil && m.cursor < len(m.regionOptions) {
+		p := m.pendingProvider
+		profile := m.pendingProfile
+		region := m.regionOptions[m.cursor].ID
+		m.pendingProvider = nil
+		m.pendingProfile = ""
+		m.regionOptions = nil
+		m.activateProfile(p, profile, []string{region})
+	}
+	return m, nil
+}
+
 // ── Main (split screen) ───────────────────────────────────────
 
 func (m *appModel) handleMainKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -61,6 +100,25 @@ func (m *appModel) handleMainKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.currentRegion != "" {
+			// Aliyun-style providers fall back to the region picker instead
+			// of an in-place "Select a region (press number)" prompt.
+			if m.currentProvider != nil {
+				if rs, ok := m.registry.Detector(m.currentProvider.Name).(core.RegionSupport); ok {
+					m.pendingProvider = m.currentProvider
+					m.pendingProfile = m.currentProfile
+					m.regionOptions = rs.RegionOptions()
+					m.cursor = 0
+					m.offset = 0
+					for i, o := range m.regionOptions {
+						if o.ID == m.currentRegion {
+							m.cursor = i
+							break
+						}
+					}
+					m.state = StateRegionSelect
+					return m, nil
+				}
+			}
 			m.currentRegion = ""
 			return m, nil
 		}

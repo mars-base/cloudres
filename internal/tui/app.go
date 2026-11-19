@@ -74,6 +74,8 @@ func (m *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.state {
 	case StateProviderSelect:
 		return m.handleProviderSelectKey(msg)
+	case StateRegionSelect:
+		return m.handleRegionSelectKey(msg)
 	case StateMain:
 		return m.handleMainKey(msg)
 	case StateDetail:
@@ -82,13 +84,38 @@ func (m *appModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ── Selection helpers ──────────────────────────────────────────
-
+// selectProvider activates a provider profile. When the provider supports a
+// static region catalog and the profile has no region configured, it shows
+// the region picker first and defers activation until a region is chosen.
 func (m *appModel) selectProvider(p *core.Provider, profile string, regions []string) {
+	if rs, ok := m.registry.Detector(p.Name).(core.RegionSupport); ok && len(regions) == 0 {
+		m.pendingProvider = p
+		m.pendingProfile = profile
+		m.regionOptions = rs.RegionOptions()
+		m.cursor = 0
+		m.offset = 0
+		m.err = nil
+		m.state = StateRegionSelect
+		return
+	}
+	m.activateProfile(p, profile, regions)
+}
+
+// activateProfile commits the profile selection and enters the main view.
+// Fetching is pinned to the selected profile's regions so region-looping
+// fetchers don't query regions that belong to other profiles.
+func (m *appModel) activateProfile(p *core.Provider, profile string, regions []string) {
 	m.currentProvider = p
-	m.currentProvider.ActiveProfile = profile
+	p.ActiveProfile = profile
+	p.Regions = append([]string(nil), regions...)
+	if profile != "" && p.ProfileRegions != nil {
+		p.ProfileRegions[profile] = append([]string(nil), regions...)
+	}
+	if rs, ok := m.registry.Detector(p.Name).(core.RegionSupport); ok && len(regions) > 0 {
+		rs.SetRegion(regions[0])
+	}
 	m.currentProfile = profile
-	m.currentRegions = regions
+	m.currentRegions = append([]string(nil), regions...)
 	m.fetchers = m.registry.FetchersFor(p.Name)
 	m.currentResource = ""
 	m.resources = nil

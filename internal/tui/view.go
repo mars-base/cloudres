@@ -29,6 +29,8 @@ func (m *appModel) View() string {
 	switch m.state {
 	case StateProviderSelect:
 		return m.viewProviderSelect()
+	case StateRegionSelect:
+		return m.viewRegionSelect()
 	case StateMain:
 		return m.viewMain()
 	case StateDetail:
@@ -63,6 +65,34 @@ func (m *appModel) viewProviderSelect() string {
 	}
 
 	return m.fitToHeight(header, logo, body, footer)
+}
+
+// ── Region Select (profiles without a configured region) ───────
+
+func (m *appModel) viewRegionSelect() string {
+	header := m.viewHeader()
+	footer := m.viewFooter()
+
+	providerName := ""
+	if m.pendingProvider != nil {
+		providerName = m.pendingProvider.Name
+	}
+	profile := m.pendingProfile
+	if profile == "" {
+		profile = "(current)"
+	}
+	title := "  " + colHeaderStyle.Render(
+		"Select a region for "+providerName+" (profile: "+profile+")") + "\n"
+
+	rows := make([][]string, len(m.regionOptions))
+	for i, r := range m.regionOptions {
+		rows[i] = []string{r.ID, r.Name}
+	}
+	used := len(toLines(header)) + len(toLines(title)) + len(toLines(footer))
+	available := max(0, m.height-used)
+	body := m.renderTable([]string{"Region", "Name"}, rows, available)
+
+	return m.fitToHeight(header, title, body, footer)
 }
 
 // ── Main (split screen: upper + lower) ─────────────────────────
@@ -499,6 +529,13 @@ func (m *appModel) viewFooter() string {
 			{"↑↓/jk", "navigate"},
 			{"enter", "select"},
 			{":", "command"},
+			{"q", "quit"},
+		}
+	case StateRegionSelect:
+		hints = []hint{
+			{"↑↓/jk", "navigate"},
+			{"enter", "select"},
+			{"esc", "back"},
 			{"q", "quit"},
 		}
 	case StateMain:

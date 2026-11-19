@@ -12,6 +12,7 @@ type ViewState int
 
 const (
 	StateProviderSelect ViewState = iota // Provider list table (full screen)
+	StateRegionSelect                    // Region picker for profiles without a region
 	StateMain                            // k9s split: upper (regions + types) + lower (resource table)
 	StateDetail                          // Full-screen detail view
 )
@@ -41,6 +42,12 @@ type appModel struct {
 	resources       []core.Resource
 	fetchers        []core.ResourceFetcher
 	loading         bool
+
+	// Region picker (shown when a RegionSupport provider's profile has no
+	// region configured); activation waits until a region is chosen.
+	pendingProvider *core.Provider
+	pendingProfile  string
+	regionOptions   []core.RegionOption
 
 	// Command bar (`:` mode)
 	commandMode  bool

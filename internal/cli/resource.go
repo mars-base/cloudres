@@ -62,10 +62,14 @@ func runResourceCommand(cmd *cobra.Command, reg *provider.Registry, providerName
 		return err
 	}
 
-	db.UpsertProvider(*p)
-
 	forceSync, _ := cmd.Flags().GetBool("sync")
 	region, _ := cmd.Flags().GetString("region")
+
+	if checkRegionGate(reg, p, fetcher.ResourceType(), region) {
+		return nil // warning printed to stderr; exit code stays 0
+	}
+
+	db.UpsertProvider(*p)
 
 	var resources []core.Resource
 	if forceSync {

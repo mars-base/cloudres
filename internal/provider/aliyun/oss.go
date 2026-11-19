@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -29,6 +30,12 @@ func (f *OSSFetcher) Fetch(ctx context.Context, p *core.Provider) ([]core.Resour
 		args = append([]string{"--profile", p.ActiveProfile}, args...)
 	}
 	cmd := exec.CommandContext(ctx, "aliyun", args...)
+	// ossutil resolves its region from the profile's region_id and ignores the
+	// global --region flag. The wrapper does honor ALIBABA_CLOUD_REGION_ID as a
+	// fallback, which is the only way to list buckets for a region-less profile.
+	if regionOverride != "" {
+		cmd.Env = append(os.Environ(), "ALIBABA_CLOUD_REGION_ID="+regionOverride)
+	}
 	out, err := cmd.Output()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
