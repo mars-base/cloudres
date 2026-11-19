@@ -3,6 +3,8 @@
 BINARY_NAME := cloudres
 BUILD_DIR := build
 GO := go
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
@@ -22,8 +24,15 @@ test:
 clean:
 	rm -rf $(BUILD_DIR)
 
-install:
-	$(GO) install $(LDFLAGS) ./cmd/cloudres
+install: build
+	@set -e; \
+	dir="$(BINDIR)"; \
+	if [ "$(origin PREFIX)/$(origin BINDIR)" = "file/file" ] && [ ! -w "$$dir" ]; then \
+		dir="$(HOME)/.local/bin"; \
+	fi; \
+	mkdir -p "$$dir"; \
+	install -m 0755 $(BUILD_DIR)/$(BINARY_NAME) "$$dir/$(BINARY_NAME)"; \
+	echo "  • Installed: $$dir/$(BINARY_NAME)"
 
 lint:
 	golangci-lint run ./...

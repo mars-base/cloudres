@@ -100,6 +100,16 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/mars-base/cloudres/main
 .\install.ps1 -InstallDir C:\tools
 ```
 
+### Build from source
+
+```bash
+make install
+```
+
+Installs to `/usr/local/bin` when it is writable, otherwise falls back to
+`~/.local/bin`. Override the destination with `make install PREFIX=...` or
+`make install BINDIR=...`.
+
 ## CLI Usage
 
 ### Global flags
