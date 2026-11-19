@@ -3,6 +3,8 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"time"
 )
 
@@ -11,11 +13,24 @@ type Provider struct {
 	Name           string              `json:"name"`
 	CLIPath        string              `json:"cli_path"`
 	ConfigPath     string              `json:"config_path"`
+	ConfigExplicit bool                `json:"-"` // config file came from the --config flag
 	Profiles       []string            `json:"profiles"`
 	Regions        []string            `json:"regions"`
 	ProfileRegions map[string][]string `json:"profile_regions"` // profile name → regions
 	ActiveProfile  string              `json:"active_profile"`  // TUI 选中的 profile，CLI 调用时传 --profile
 	DetectedAt     time.Time           `json:"detected_at"`
+}
+
+// CacheProfile returns the profile key used to partition cached resources.
+// When a vendor config file is explicitly supplied via --config, a short hash
+// of the file path is appended so that same-named profiles from different
+// config files (e.g. two accounts both using "default") never share rows.
+func (p *Provider) CacheProfile() string {
+	if !p.ConfigExplicit || p.ConfigPath == "" {
+		return p.ActiveProfile
+	}
+	sum := sha256.Sum256([]byte(p.ConfigPath))
+	return p.ActiveProfile + "@" + fmt.Sprintf("%x", sum[:4])
 }
 
 // Resource represents a single cloud resource cached in SQLite.

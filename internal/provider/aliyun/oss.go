@@ -22,6 +22,9 @@ func (f *OSSFetcher) Fetch(ctx context.Context, p *core.Provider) ([]core.Resour
 	// wrapper; it silently ignores --profile when placed after the "ossutil"
 	// subcommand, so --profile must come before "ossutil" as a global flag.
 	args := []string{"ossutil", "ls"}
+	if configPathOverride != "" {
+		args = append([]string{"--config-path", configPathOverride}, args...)
+	}
 	if p.ActiveProfile != "" {
 		args = append([]string{"--profile", p.ActiveProfile}, args...)
 	}

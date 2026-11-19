@@ -3,12 +3,21 @@ package aliyun
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/mars-base/cloudres/internal/core"
 )
+
+// configPathOverride is set once from the --config flag before detection and
+// fetching, making both config parsing and every aliyun CLI invocation use
+// the supplied file instead of ~/.aliyun/config.json.
+var configPathOverride string
+
+// SetConfigPath points the aliyun provider at an explicit CLI config file.
+func SetConfigPath(path string) { configPathOverride = path }
 
 type Detector struct{}
 
@@ -53,18 +62,31 @@ func (d *Detector) Fetchers() []core.ResourceFetcher {
 }
 
 func (d *Detector) Detect(ctx context.Context) (*core.Provider, error) {
+	explicit := configPathOverride != ""
 	cliPath, err := exec.LookPath("aliyun")
 	if err != nil {
+		if explicit {
+			return nil, fmt.Errorf("aliyun CLI not found in PATH")
+		}
 		return nil, nil // not installed
 	}
 
 	configPath := aliyunConfigPath()
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	if explicit {
+		configPath = configPathOverride
+	}
+	if _, err := os.Stat(configPath); err != nil {
+		if explicit {
+			return nil, fmt.Errorf("config file %s: %w", configPath, err)
+		}
 		return nil, nil // no config
 	}
 
 	profiles, profileRegions, currentProfile, err := parseAliyunConfig(configPath)
 	if err != nil {
+		if explicit {
+			return nil, fmt.Errorf("parse config file %s: %w", configPath, err)
+		}
 		return nil, nil // config parse error, skip silently
 	}
 
@@ -93,6 +115,7 @@ func (d *Detector) Detect(ctx context.Context) (*core.Provider, error) {
 		Name:           "aliyun",
 		CLIPath:        cliPath,
 		ConfigPath:     configPath,
+		ConfigExplicit: explicit,
 		Profiles:       profiles,
 		Regions:        regions,
 		ProfileRegions: profileRegions,

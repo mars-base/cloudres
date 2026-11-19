@@ -54,6 +54,18 @@ func (r *Registry) Get(ctx context.Context, name string) (*core.Provider, error)
 	return nil, fmt.Errorf("unknown provider %q", name)
 }
 
+// RestrictTo keeps only the named provider's detector, so a run with an
+// explicit vendor config file processes that vendor alone.
+func (r *Registry) RestrictTo(name string) {
+	var kept []core.ProviderDetector
+	for _, d := range r.detectors {
+		if d.Name() == name {
+			kept = append(kept, d)
+		}
+	}
+	r.detectors = kept
+}
+
 // FetchersFor returns all resource fetchers for a named provider.
 func (r *Registry) FetchersFor(name string) []core.ResourceFetcher {
 	for _, d := range r.detectors {

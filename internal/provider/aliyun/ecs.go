@@ -201,10 +201,13 @@ func fetchECSAutoRenewBatch(ctx context.Context, p *core.Provider, region string
 
 // runAliyun executes the aliyun CLI and returns stdout bytes.
 func runAliyun(ctx context.Context, args []string, profile string) ([]byte, error) {
-	fullArgs := make([]string, 0, len(args)+2)
+	fullArgs := make([]string, 0, len(args)+4)
 	fullArgs = append(fullArgs, args...)
 	if profile != "" {
 		fullArgs = append(fullArgs, "--profile", profile)
+	}
+	if configPathOverride != "" {
+		fullArgs = append(fullArgs, "--config-path", configPathOverride)
 	}
 	cmd := exec.CommandContext(ctx, "aliyun", fullArgs...)
 	out, err := cmd.Output()

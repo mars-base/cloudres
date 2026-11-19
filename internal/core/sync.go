@@ -11,7 +11,7 @@ const staleThreshold = 5 * time.Minute
 // Sync fetches resources from a provider if the cache is stale, then returns the list.
 func Sync(ctx context.Context, db *DB, provider *Provider, fetcher ResourceFetcher, region string) ([]Resource, error) {
 	rtype := fetcher.ResourceType()
-	profile := provider.ActiveProfile
+	profile := provider.CacheProfile()
 
 	lastSync, _ := db.GetLastSyncTime(provider.Name, profile, rtype)
 	needSync := time.Since(lastSync) > staleThreshold
@@ -32,7 +32,7 @@ func Sync(ctx context.Context, db *DB, provider *Provider, fetcher ResourceFetch
 
 // SyncAndList forces a sync and returns fresh results.
 func SyncAndList(ctx context.Context, db *DB, provider *Provider, fetcher ResourceFetcher, region string) ([]Resource, error) {
-	profile := provider.ActiveProfile
+	profile := provider.CacheProfile()
 	if err := doSync(ctx, db, provider, fetcher, region); err != nil {
 		// Fallback to cache
 		return db.ListResources(provider.Name, profile, fetcher.ResourceType(), region)
@@ -42,7 +42,7 @@ func SyncAndList(ctx context.Context, db *DB, provider *Provider, fetcher Resour
 
 func doSync(ctx context.Context, db *DB, provider *Provider, fetcher ResourceFetcher, region string) error {
 	rtype := fetcher.ResourceType()
-	profile := provider.ActiveProfile
+	profile := provider.CacheProfile()
 
 	logID, err := db.InsertSyncLog(provider.Name, profile, rtype, region)
 	if err != nil {

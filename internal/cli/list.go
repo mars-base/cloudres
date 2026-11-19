@@ -6,9 +6,6 @@ import (
 	"strings"
 
 	"github.com/mars-base/cloudres/internal/core"
-	"github.com/mars-base/cloudres/internal/provider"
-	"github.com/mars-base/cloudres/internal/provider/aliyun"
-	"github.com/mars-base/cloudres/internal/provider/huawei"
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +23,7 @@ var listCmd = &cobra.Command{
 		}
 		defer db.Close()
 
-		reg := provider.NewRegistry()
-		reg.Register(aliyun.NewDetector())
-			reg.Register(huawei.NewDetector())
+		reg := newRegistry()
 
 		ctx := context.Background()
 		providers := reg.DetectAll(ctx)

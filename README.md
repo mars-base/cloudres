@@ -170,6 +170,31 @@ cloudres huawei eip
 cloudres huawei dcs --profile myproject --sync
 ```
 
+### Use an alternate CLI config file
+
+The global `--config` flag points cloudres at a vendor CLI config file other
+than the default (`~/.aliyun/config.json`, `~/.hcloud/config.json`). The vendor
+is auto-detected from the file contents (profile key naming), and the run is
+restricted to that vendor — TUI, `list`, and provider subcommands only see it.
+
+```bash
+# TUI restricted to aliyun, using the given config
+cloudres -c /path/to/aliyun-config.json
+
+# Same for CLI commands (--config is the long form)
+cloudres -c /path/to/aliyun-config.json list
+cloudres -c /path/to/aliyun-config.json aliyun ecs --sync
+```
+
+Notes:
+
+- Only Aliyun is supported: the `aliyun` CLI accepts `--config-path`, while
+  `hcloud` has no equivalent option (it always reads `~/.hcloud/config.json`),
+  so a Huawei config passed to `--config` is rejected with an error.
+- Data synced with an explicit config is cached in its own partition
+  (`<profile>@<hash>`), so it never mixes with rows synced from the default
+  config file.
+
 ### Show version
 
 ```bash

@@ -43,6 +43,10 @@ func registerProviderCommands(reg *provider.Registry) {
 }
 
 func runResourceCommand(cmd *cobra.Command, reg *provider.Registry, providerName string, fetcher core.ResourceFetcher) error {
+	if cfgVendor != "" && providerName != cfgVendor {
+		return fmt.Errorf("provider %q is not available: --config %q selects a %s config", providerName, cfgPath, cfgVendor)
+	}
+
 	db, err := core.Open()
 	if err != nil {
 		return err
