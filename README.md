@@ -13,6 +13,9 @@ an interactive terminal UI for browsing resources across regions.
 - **CLI mode** — Tabulated output for use in scripts and pipelines
 - **Local SQLite cache** — Resources are synced once and cached, with
   on-demand refresh (`--sync` flag)
+- **Alternate CLI config file** — Global `-c`/`--config` flag points at a
+  non-default vendor CLI config; the vendor is auto-detected and the run is
+  restricted to it (Aliyun only)
 - **Extensible provider model** — New cloud providers plug into the
   `ProviderDetector` + `ResourceFetcher` interface
 - **Cross-platform** — Linux, macOS, Windows (amd64 + arm64)
@@ -69,7 +72,9 @@ an interactive terminal UI for browsing resources across regions.
 ## Prerequisites
 
 - Provider-specific CLI tools (e.g. `aliyun` CLI for Alibaba Cloud, `hcloud` CLI for Huawei Cloud)
-- A valid provider config (e.g. `~/.aliyun/config.json`, `~/.hcloud/config.json`)
+- A valid provider config (e.g. `~/.aliyun/config.json`, `~/.hcloud/config.json`).
+  An alternate Aliyun config file can be used instead via `-c`/`--config`
+  (see [Use an alternate CLI config file](#use-an-alternate-cli-config-file)).
 
 ## Installation
 
@@ -96,6 +101,18 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/mars-base/cloudres/main
 ```
 
 ## CLI Usage
+
+### Global flags
+
+These flags apply to every command, including the TUI:
+
+| Flag | Description |
+|------|-------------|
+| `-c, --config <path>` | Use an alternate vendor CLI config file. The vendor is auto-detected from the file contents and the run processes that vendor only (Aliyun only — `hcloud` has no custom config option) |
+| `--profile <name>` | Override the active profile (defaults to the config file's `current` profile) |
+
+Resource subcommands additionally accept `--region <id>` (filter by region)
+and `--sync` (force re-sync before listing).
 
 ### Enter TUI (default)
 
