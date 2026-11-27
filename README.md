@@ -106,9 +106,9 @@ Invoke-WebRequest -Uri https://raw.githubusercontent.com/mars-base/cloudres/main
 make install
 ```
 
-Installs to `/usr/local/bin` when it is writable, otherwise falls back to
-`~/.local/bin`. Override the destination with `make install PREFIX=...` or
-`make install BINDIR=...`.
+Installs to `/usr/local/bin`, the same destination as the release install
+script, using `sudo` when the directory isn't writable. Override the
+destination with `make install PREFIX=...` or `make install BINDIR=...`.
 
 ## CLI Usage
 

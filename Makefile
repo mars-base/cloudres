@@ -27,11 +27,11 @@ clean:
 install: build
 	@set -e; \
 	dir="$(BINDIR)"; \
-	if [ "$(origin PREFIX)/$(origin BINDIR)" = "file/file" ] && [ ! -w "$$dir" ]; then \
-		dir="$(HOME)/.local/bin"; \
+	if [ -w "$$dir" ]; then \
+		install -m 0755 $(BUILD_DIR)/$(BINARY_NAME) "$$dir/$(BINARY_NAME)"; \
+	else \
+		sudo install -m 0755 $(BUILD_DIR)/$(BINARY_NAME) "$$dir/$(BINARY_NAME)"; \
 	fi; \
-	mkdir -p "$$dir"; \
-	install -m 0755 $(BUILD_DIR)/$(BINARY_NAME) "$$dir/$(BINARY_NAME)"; \
 	echo "  • Installed: $$dir/$(BINARY_NAME)"
 
 lint:
