@@ -415,6 +415,30 @@ func (r Resource) tairDetail() [][2]string {
 	return pairs
 }
 
+// pdbStorageTypeLabel maps PolarDB OpenAPI storage-type enums to the names
+// used in the console. Enterprise-edition clusters report the legacy
+// HighPerformance/Standard values, which are the PSL5/PSL4 storage classes;
+// standard-edition clusters report PSL4 or the ESSD types directly.
+func pdbStorageTypeLabel(t string) string {
+	switch strings.ToUpper(t) {
+	case "HIGHPERFORMANCE":
+		return "PSL5 (HighPerformance)"
+	case "STANDARD":
+		return "PSL4 (Standard)"
+	case "ESSDPL0":
+		return "ESSD PL0"
+	case "ESSDPL1":
+		return "ESSD PL1"
+	case "ESSDPL2":
+		return "ESSD PL2"
+	case "ESSDPL3":
+		return "ESSD PL3"
+	case "ESSDAUTOPL":
+		return "ESSD AutoPL"
+	}
+	return t
+}
+
 func (r Resource) polarDBDetail() [][2]string {
 	var d struct {
 		Engine                string `json:"Engine"`
@@ -464,7 +488,7 @@ func (r Resource) polarDBDetail() [][2]string {
 		{"Engine", d.Engine + " " + d.DBVersion},
 		{"NodeClass", d.DBNodeClass},
 		{"NodeCount", d.DBNodeNumber},
-		{"StorageType", d.StorageType},
+		{"StorageType", pdbStorageTypeLabel(d.StorageType)},
 		{"StorageUsed", formatBytes(d.StorageUsed)},
 		{"StorageSpace", storageSpace},
 		{"StorageUsagePct", usagePct},
